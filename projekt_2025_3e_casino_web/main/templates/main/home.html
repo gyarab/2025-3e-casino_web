@@ -6,7 +6,28 @@
     <title>Casino Web</title>
 </head>
 <body>
+    <nav style="display: flex; justify-content: space-between; padding: 10px;">
+        <button id="menu-btn">Menu</button>
+        <button id="profile-btn" style="border-radius: 50%; width: 40px; height: 40px;">P</button>
+        <div id="menu" style="display: none; position: absolute; top: 50px; left: 10px; background: white; border: 1px solid black; padding: 10px;">
+            <a href="#" style="display: block; padding: 5px;">Home</a>
+            <a href="#" style="display: block; padding: 5px;">Settings</a>
+        </div>
+    </nav>
+
     <h1>Vítejte v Casino Web</h1>
-    <p>Toto je domovská stránka.</p>
+    
+    <button onclick="goToGameModes()">Game Modes</button>
+
+    <script>
+        document.getElementById('menu-btn').addEventListener('click', function() {
+            const menu = document.getElementById('menu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        });
+
+        function goToGameModes() {
+            window.location.href = `/gamemodes/`;
+        }
+    </script>
 </body>
 </html>
