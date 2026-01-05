@@ -6,3 +6,6 @@ def signin(request):
 
 def home(request):
     return render(request, 'main/home.html')
+
+def gamemodes(request):
+    return render(request, 'main/gamemodes.html')
