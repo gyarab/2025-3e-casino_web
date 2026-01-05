@@ -17,8 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from main.views import signin, home, gamemodes
+from main import views
 
 urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', views.home, name='home'),
+    path('blackjack/', views.blackjack, name='blackjack'),
     path('', signin, name='signin'),
     path('home/', home, name='home'),
     path('gamemodes/', gamemodes, name='gamemodes'),
