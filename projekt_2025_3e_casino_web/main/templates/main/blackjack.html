@@ -54,6 +54,10 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.10);
             font-size: 1.2em;
             transition: transform 0.1s, border 0.2s;
+            user-select: none;
+        }
+        .chip:hover {
+            transform: scale(1.1);
         }
         .chip.selected {
             border: 3px solid #ff6b6b;
@@ -214,23 +218,31 @@
         .insurance-bar button {
             margin: 0 10px;
         }
+        .chip-help {
+            text-align: center;
+            color: #fffde7;
+            font-size: 0.85em;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
     <div class="table">
-        <button class="close-btn" onclick="window.location.href='/'" title="Zpět na hlavní stránku">&times;</button>
-        <div class="balance-info" id="balance-info">Zůstatek: 1000</div>
+        <button class="close-btn" onclick="window.location.href='/'" title="Back to home">&times;</button>
+        <div class="balance-info" id="balance-info">Balance: 1000</div>
+        <div class="chip-help">💡 Left-click to ADD | Right-click to REMOVE from bet</div>
         <div class="chips">
-            <span class="chip" onclick="setBet(10)">10</span>
-            <span class="chip" onclick="setBet(50)">50</span>
-            <span class="chip" onclick="setBet(100)">100</span>
-            <span class="chip" onclick="setBet(500)">500</span>
+            <span class="chip" data-value="10" onclick="addBet(10); return false;" oncontextmenu="removeBet(10); return false;">10</span>
+            <span class="chip" data-value="50" onclick="addBet(50); return false;" oncontextmenu="removeBet(50); return false;">50</span>
+            <span class="chip" data-value="100" onclick="addBet(100); return false;" oncontextmenu="removeBet(100); return false;">100</span>
+            <span class="chip" data-value="500" onclick="addBet(500); return false;" oncontextmenu="removeBet(500); return false;">500</span>
         </div>
-        <div class="bet-info" id="bet-info">Sázka: 10</div>
+        <div class="bet-info" id="bet-info">Bet: 10</div>
         <div class="insurance-bar" id="insurance-bar" style="display:none;">
-            Dealer má eso. Chcete pojištění za <span id="insurance-amount"></span>?
-            <button class="btn-bj" onclick="takeInsurance()">Ano</button>
-            <button class="btn-bj" onclick="noInsurance()">Ne</button>
+            Dealer has an Ace. Take insurance for <span id="insurance-amount"></span>?
+            <button class="btn-bj" onclick="takeInsurance()">Yes</button>
+            <button class="btn-bj" onclick="noInsurance()">No</button>
         </div>
         <div class="section">
             <div class="dealer-label">DEALER</div>
@@ -238,30 +250,30 @@
             <div class="score" id="dealer-score"></div>
         </div>
         <div class="section" id="player-section">
-            <div class="player-label">HRÁČ</div>
+            <div class="player-label">PLAYER</div>
             <div class="cards" id="player-cards"></div>
             <div class="score" id="player-score"></div>
         </div>
         <div class="section" id="split-section" style="display:none;">
             <div class="split-hands">
                 <div id="split-hand-0" class="split-hand">
-                    <div class="split-hand-label">LEVÁ RUKA</div>
+                    <div class="split-hand-label">LEFT HAND</div>
                     <div class="cards" id="split-cards-0"></div>
                     <div class="score" id="split-score-0"></div>
                     <div class="btns">
-                        <button class="btn-bj" onclick="splitHit(0)" id="split-hit-0">Přidat kartu</button>
-                        <button class="btn-bj" onclick="splitStand(0)" id="split-stand-0">Zůstat</button>
+                        <button class="btn-bj" onclick="splitHit(0)" id="split-hit-0">Hit</button>
+                        <button class="btn-bj" onclick="splitStand(0)" id="split-stand-0">Stand</button>
                         <button class="btn-bj" onclick="splitDouble(0)" id="split-double-0">Double</button>
                     </div>
                     <div class="message" id="split-msg-0"></div>
                 </div>
                 <div id="split-hand-1" class="split-hand">
-                    <div class="split-hand-label">PRAVÁ RUKA</div>
+                    <div class="split-hand-label">RIGHT HAND</div>
                     <div class="cards" id="split-cards-1"></div>
                     <div class="score" id="split-score-1"></div>
                     <div class="btns">
-                        <button class="btn-bj" onclick="splitHit(1)" id="split-hit-1">Přidat kartu</button>
-                        <button class="btn-bj" onclick="splitStand(1)" id="split-stand-1">Zůstat</button>
+                        <button class="btn-bj" onclick="splitHit(1)" id="split-hit-1">Hit</button>
+                        <button class="btn-bj" onclick="splitStand(1)" id="split-stand-1">Stand</button>
                         <button class="btn-bj" onclick="splitDouble(1)" id="split-double-1">Double</button>
                     </div>
                     <div class="message" id="split-msg-1"></div>
@@ -269,9 +281,9 @@
             </div>
         </div>
         <div class="btns" id="main-btns">
-            <button class="btn-bj" onclick="deal()" id="btn-deal">Rozdat</button>
-            <button class="btn-bj" onclick="hit()" id="btn-hit" disabled>Přidat kartu</button>
-            <button class="btn-bj" onclick="stand()" id="btn-stand" disabled>Zůstat</button>
+            <button class="btn-bj" onclick="deal()" id="btn-deal">Deal</button>
+            <button class="btn-bj" onclick="hit()" id="btn-hit" disabled>Hit</button>
+            <button class="btn-bj" onclick="stand()" id="btn-stand" disabled>Stand</button>
             <button class="btn-bj" onclick="doubleDown()" id="btn-double" disabled>Double</button>
             <button class="btn-bj" onclick="split()" id="btn-split" style="display:none;">Split</button>
         </div>
@@ -333,6 +345,18 @@
             let chips = document.querySelectorAll('.chip');
             chips.forEach(chip => chip.classList.remove('selected'));
             chips[[10,50,100,500].indexOf(amount)].classList.add('selected');
+        }
+
+        function addBet(amount) {
+            if (!canBet) return;
+            bet += amount;
+            document.getElementById('bet-info').innerText = "Bet: " + bet;
+        }
+
+        function removeBet(amount) {
+            if (!canBet) return;
+            bet = Math.max(0, bet - amount);
+            document.getElementById('bet-info').innerText = "Bet: " + bet;
         }
         function canSplit(cards) {
             if (cards.length !== 2) return false;
@@ -398,10 +422,10 @@
                     dealerRevealPending = false;
                     render();
                     if (isBlackjack(dealer)) {
-                        message = "Remíza! Oba máte blackjack.";
+                        message = "Push! Both have blackjack.";
                         balance += bet;
                     } else {
-                        message = "Blackjack! Výhra 3:2";
+                        message = "Blackjack! Win 3:2";
                         balance += Math.floor(bet * 2.5);
                     }
                     gameOver = true;
@@ -436,7 +460,7 @@
             setTimeout(() => { playerAnim[player.length-1] = false; render(); }, 500);
             if (getValue(player) > 21) {
                 setTimeout(() => {
-                    message = "Přesáhl jsi 21! Prohrál jsi.";
+                    message = "Bust! You lose.";
                     balance -= bet;
                     gameOver = true;
                     dealerRevealPending = true;
@@ -542,7 +566,7 @@
                 splitAnim[hand][splitHands[hand].length-1] = false;
                 render();
                 if (getValue(splitHands[hand]) > 21) {
-                    splitMsg[hand] = "Přesáhl jsi 21!";
+                    splitMsg[hand] = "Bust!";
                 }
                 splitDone[hand] = true;
                 nextSplitHand();
@@ -592,14 +616,14 @@
                     let d = getValue(dealer);
                     let handBet = bet * (splitDoubleUsed[h] ? 2 : 1);
                     if (p > 21) {
-                        splitMsg[h] = "Prohrál jsi!";
+                        splitMsg[h] = "You lose!";
                     } else if (d > 21 || p > d) {
-                        splitMsg[h] = "Vyhrál jsi!";
+                        splitMsg[h] = "You win!";
                         balance += handBet * 2;
                     } else if (p < d) {
-                        splitMsg[h] = "Prohrál jsi!";
+                        splitMsg[h] = "You lose!";
                     } else {
-                        splitMsg[h] = "Remíza!";
+                        splitMsg[h] = "Push!";
                         balance += handBet;
                     }
                 }
@@ -623,14 +647,14 @@
                 let p = getValue(player);
                 let d = getValue(dealer);
                 if (p > 21) {
-                    message = "Prohrál jsi!";
+                    message = "You lose!";
                 } else if (d > 21 || p > d) {
-                    message = "Vyhrál jsi!";
+                    message = "You win!";
                     balance += bet * 2;
                 } else if (p < d) {
-                    message = "Prohrál jsi!";
+                    message = "You lose!";
                 } else {
-                    message = "Remíza!";
+                    message = "Push!";
                     balance += bet;
                 }
                 gameOver = true;
@@ -674,10 +698,10 @@
                 render();
                 setTimeout(() => {
                     if (insuranceTaken) {
-                        message = "Dealer má blackjack! Pojištění vyplaceno.";
+                        message = "Dealer has Blackjack! Insurance paid.";
                         balance += insuranceBet * 3;
                     } else {
-                        message = "Dealer má blackjack! Prohrál jsi.";
+                        message = "Dealer has Blackjack! You lose.";
                     }
                     gameOver = true;
                     endGame();
@@ -726,7 +750,7 @@
                 }
             }
             document.getElementById('dealer-cards').innerHTML = dealerHTML;
-            document.getElementById('dealer-score').innerText = (dealerHidden || dealerRevealPending) && started ? "?" : (dealer ? "Součet: " + getValue(dealer) : "");
+            document.getElementById('dealer-score').innerText = (dealerHidden || dealerRevealPending) && started ? "?" : (dealer ? "Total: " + getValue(dealer) : "");
 
             if (splitMode) {
                 document.getElementById('split-section').style.display = "";
@@ -744,7 +768,7 @@
                         `;
                     }
                     document.getElementById('split-cards-'+h).innerHTML = html;
-                    document.getElementById('split-score-'+h).innerText = "Součet: " + getValue(splitHands[h]);
+                    document.getElementById('split-score-'+h).innerText = "Total: " + getValue(splitHands[h]);
                     document.getElementById('split-hand-'+h).className = "split-hand" + (splitActive === h ? " split-active" : "");
                     document.getElementById('split-hit-'+h).disabled = splitDone[h] || splitActive !== h;
                     document.getElementById('split-stand-'+h).disabled = splitDone[h] || splitActive !== h;
@@ -766,11 +790,11 @@
                     `;
                 }
                 document.getElementById('player-cards').innerHTML = playerHTML;
-                document.getElementById('player-score').innerText = player ? "Součet: " + getValue(player) : "";
+                document.getElementById('player-score').innerText = player ? "Total: " + getValue(player) : "";
             }
 
             document.getElementById('bet-info').innerText = "Sázka: " + bet;
-            document.getElementById('balance-info').innerText = "Zůstatek: " + balance;
+            document.getElementById('balance-info').innerText = "Balance: " + balance;
             document.getElementById('message').innerText = message;
         }
 
