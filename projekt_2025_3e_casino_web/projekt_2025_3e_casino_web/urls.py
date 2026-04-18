@@ -28,10 +28,18 @@ urlpatterns = [
     path('shop/', views.shop, name='shop'),
     path('gamemodes/', views.gamemodes, name='gamemodes'),
     path('slots/', views.slots, name='slots'),
+    path('battlepass/', views.battlepass, name='battlepass'),
+    path('claim_reward/', views.claim_reward, name='claim_reward'),
     path('update_balance/', views.update_balance, name='update_balance'),
     path('api/spin-slot/', views.spin_slot, name='spin_slot'),
+    path('api/spin/', views.spin_slot, name='spin_slot_alt'),
     path('api/battle-pass/', views.get_battle_pass_data, name='battle_pass_data'),
     path('api/quests/', views.get_quests_data, name='quests_data'),
+    path('accounts/', include('allauth.urls')),
+]
+    path('api/battlepass/', get_battle_pass_data, name='get_battle_pass'),
+    path('api/quests/', get_quests_data, name='get_quests'),
+>>>>>>> 1cd7abd2fb42d4053f0c388f585bc0006fe61082
     path('accounts/', include('allauth.urls')),
 ]
 

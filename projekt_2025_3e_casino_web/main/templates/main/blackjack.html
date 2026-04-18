@@ -1,287 +1,95 @@
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-    <meta charset="UTF-8">
-    <title>Blackjack</title>
+{% extends 'main/base.html' %}
+
+{% block title %}Blackjack - Casino Web{% endblock %}
+
+{% block extra_head %}
     <style>
-        body {
-            background: #1b5e20;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        .table {
-            background: radial-gradient(ellipse at center, #388e3c 0%, #1b5e20 100%);
-            border-radius: 32px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.30);
-            padding: 40px 30px 30px 30px;
-            margin: 40px auto;
-            max-width: 900px;
-            min-height: 650px;
-            position: relative;
-        }
-        .close-btn {
-            position: absolute;
-            top: 18px;
-            right: 24px;
-            font-size: 2em;
-            color: #fffde7;
-            background: none;
-            border: none;
-            cursor: pointer;
-            z-index: 10;
-            transition: color 0.2s;
-        }
-        .close-btn:hover {
-            color: #ff6b6b;
-        }
-        .chips {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .chip {
-            display: inline-block;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            margin: 0 10px;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-            transition: transform 0.1s, border 0.2s;
-            border: 3px solid transparent;
-        }
-        .chip.selected {
-            border: 3px solid #ff6b6b;
-            transform: scale(1.15);
-        }
-        .bet-info {
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 1.2em;
-            color: #fffde7;
-        }
-        .section {
-            margin-bottom: 30px;
-        }
-        .cards {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            margin-bottom: 8px;
-            min-height: 110px;
-        }
-        .card-container {
-            perspective: 800px;
-            position: relative;
-        }
-        .card {
-            width: 70px;
-            height: 100px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 1.7em;
-            color: #222;
-            position: relative;
-            border: 2px solid #eee;
-            transition: transform 0.2s;
-            padding: 6px 0;
-            opacity: 1;
-            backface-visibility: hidden;
-        }
+        body { background: #1b5e20; }
+        .table { background: radial-gradient(ellipse at center, #388e3c 0%, #1b5e20 100%); border-radius: 32px; box-shadow: 0 8px 32px rgba(0,0,0,0.30); padding: 40px 30px 30px 30px; margin: 40px auto; max-width: 900px; min-height: 650px; position: relative; }
+        .close-btn { position: absolute; top: 18px; right: 24px; font-size: 2em; color: #fffde7; background: none; border: none; cursor: pointer; z-index: 10; transition: color 0.2s; }
+        .close-btn:hover { color: #ff6b6b; }
+        .chips { text-align: center; margin-bottom: 20px; }
+        .chip { display: inline-block; background: radial-gradient(circle at 30% 30%, #fff 60%, #ffb300 100%); border: 3px solid #ffa500; border-radius: 50%; width: 48px; height: 48px; line-height: 48px; font-weight: bold; color: #222; margin: 0 10px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.10); font-size: 1.2em; transition: transform 0.1s, border 0.2s; user-select: none; }
+        .chip:hover { transform: scale(1.1); }
+        .chip.selected { border: 3px solid #ff6b6b; transform: scale(1.15); }
+        .bet-info { text-align: center; margin-bottom: 10px; font-size: 1.2em; color: #fffde7; }
+        .section { margin-bottom: 30px; }
+        .cards { display: flex; gap: 16px; justify-content: center; margin-bottom: 8px; min-height: 110px; }
+        .card-container { perspective: 800px; position: relative; }
+        .card { width: 70px; height: 100px; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.18); display: flex; flex-direction: column; align-items: center; justify-content: space-between; font-size: 1.7em; color: #222; position: relative; border: 2px solid #eee; transition: transform 0.2s; padding: 6px 0; opacity: 1; backface-visibility: hidden; }
         .card.red { color: #d32f2f; }
-        .card.back {
-            background: repeating-linear-gradient(135deg, #388e3c, #388e3c 10px, #1b5e20 10px, #1b5e20 20px);
-            border: 2px solid #333;
-        }
-        .deal-fly {
-            animation: dealFly 0.5s cubic-bezier(.4,2,.6,1) forwards;
-        }
-        @keyframes dealFly {
-            0% {
-                opacity: 0;
-                transform: translateY(-120px) scale(0.2) rotateY(90deg);
-            }
-            60% {
-                opacity: 1;
-                transform: translateY(10px) scale(1.1) rotateY(-10deg);
-            }
-            80% {
-                transform: translateY(0px) scale(1.05) rotateY(0deg);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0) scale(1) rotateY(0deg);
-            }
-        }
-        .flip-container {
-            perspective: 800px;
-            display: inline-block;
-              position: relative;
-          }
-          .flipper {
-             transition: transform 0.6s cubic-bezier(.4,2,.6,1);
-              transform-style: preserve-3d;
-              position: relative;
-          }
-          .flipped .flipper {
-             transform: rotateY(180deg);
-             animation: flipAnimation 0.6s cubic-bezier(.4,2,.6,1) forwards;
-          }
-        @keyframes flipAnimation {
-            0% { transform: rotateY(0deg); }
-            50% { transform: rotateY(90deg) scale(1.05); }
-            100% { transform: rotateY(180deg) translateX(80px); }
-        }
-        .revealed {
-            animation: revealAnim 0.5s ease-out 0.6s both;
-        }
-        @keyframes revealAnim {
-            0% { opacity: 0; transform: scale(0.8); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-          .flip-front, .flip-back {
-              position: absolute;
-              width: 70px;
-              height: 100px;
-            top: 0; left: 0;
-            backface-visibility: hidden;
-        }
-        .flip-back {
-            transform: rotateY(180deg);
-        }
-        .score {
-            font-size: 1.1em;
-            margin-bottom: 10px;
-            color: #fffde7;
-        }
-        .btns {
-            display: flex;
-            justify-content: center;
-                         gap: 18px;
-              margin-top: 24px;
-          }
-          .btn-bj {
-              background: linear-gradient(270deg, #ff6b6b, #ffa500, #ff6b6b);
-              background-size: 600% 600%;
-              animation: gradientMove 3s linear infinite;
-              color: #fff;
-              border: none;
-              border-radius: 8px;
-              padding: 14px 36px;
-              font-size: 1.1em;
-              font-weight: bold;
-              cursor: pointer;
-              transition: transform 0.2s;
-              background-size: 600% 600%;
-              animation: gradientMove 3s linear infinite;
-          }
-         #btn-deal {
-             background: linear-gradient(270deg, #4caf50, #81c784, #66bb6a, #4caf50);
-         }
-         #btn-hit {
-             background: linear-gradient(270deg, #9c27b0, #ba68c8, #ab47bc, #9c27b0);
-         }
-         #btn-stand {
-             background: linear-gradient(270deg, #ff6b6b, #ffa500, #ff8a65, #ff6b6b);
-         }
-         #btn-double {
-             background: linear-gradient(270deg, #2196f3, #64b5f6, #42a5f5, #2196f3);
-         }
-         #btn-split, #split-hit-0, #split-hit-1 {
-             background: linear-gradient(270deg, #ffeb3b, #fff176, #fdd835, #ffeb3b);
-         }
-         #split-stand-0, #split-stand-1 {
-             background: linear-gradient(270deg, #ff5722, #ff8a65, #f4511e, #ff5722);
-         }
-         #split-double-0, #split-double-1 {
-             background: linear-gradient(270deg, #00bcd4, #4dd0e1, #26c6da, #00bcd4);
-         }
-          .btn-bj:disabled {
-              opacity: 0.5;
-              cursor: not-allowed;
-          }
-        .btn-bj:hover:enabled {
-            transform: scale(1.08);
-        }
-        @keyframes gradientMove {
-            0% {background-position: 0% 50%;}
-            50% {background-position: 100% 50%;}
-            100% {background-position: 0% 50%;}
-        }
-        .message {
-            text-align: center;
-            font-size: 1.3em;
-            font-weight: bold;
-            margin-top: 20px;
-            min-height: 32px;
-            color: #fffde7;
-            text-shadow: 0 2px 8px #2228;
-        }
-        .dealer-label, .player-label {
-            text-align: center;
-            font-weight: bold;
-            letter-spacing: 1px;
-            margin-bottom: 4px;
-            color: #fffde7;
-        }
-        .balance-info {
-            text-align: center;
-            color: #fffde7;
-            font-size: 1.1em;
-            margin-bottom: 10px;
-        }
+        .card.back { background: repeating-linear-gradient(135deg, #388e3c, #388e3c 10px, #1b5e20 10px, #1b5e20 20px); border: 2px solid #333; }
+        .deal-fly { animation: dealFly 0.5s cubic-bezier(.4,2,.6,1) forwards; }
+        @keyframes dealFly { 0% { opacity: 0; transform: translateY(-120px) scale(0.2); } 60% { opacity: 1; transform: translateY(10px) scale(1.1); } 80% { transform: translateY(0px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+        .flip-container { perspective: 800px; display: inline-block; position: relative; }
+        .flipper { transition: transform 0.6s cubic-bezier(.4,2,.6,1); transform-style: preserve-3d; position: relative; }
+        .flipped .flipper { transform: rotateY(180deg); }
+        .flip-front, .flip-back { position: absolute; width: 70px; height: 100px; top: 0; left: 0; backface-visibility: hidden; }
+        .flip-back { transform: rotateY(180deg); }
+        .score { font-size: 1.1em; margin-bottom: 10px; color: #fffde7; }
+        .btns { display: flex; justify-content: center; gap: 18px; margin-top: 24px; flex-wrap: wrap; }
+        .btn-bj { background: linear-gradient(270deg, #ff6b6b, #ffa500, #ff6b6b); background-size: 600% 600%; animation: gradientMove 3s linear infinite; color: #fff; border: none; border-radius: 8px; padding: 14px 36px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+        .btn-bj:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-bj:hover:enabled { transform: scale(1.08); }
+        .message { text-align: center; font-size: 1.3em; font-weight: bold; margin-top: 20px; min-height: 32px; color: #fffde7; text-shadow: 0 2px 8px #2228; }
+        .dealer-label, .player-label { text-align: center; font-weight: bold; letter-spacing: 1px; margin-bottom: 4px; color: #fffde7; }
+        .balance-info { text-align: center; color: #fffde7; font-size: 1.1em; margin-bottom: 10px; }
         .split-hands { display: flex; justify-content: center; gap: 40px; }
         .split-hand-label { text-align: center; color: #fffde7; font-weight: bold; margin-bottom: 4px; }
         .split-active { box-shadow: 0 0 0 4px #ffa50088; border-radius: 16px; }
+        .insurance-bar { text-align: center; margin: 10px 0 20px 0; }
+        .insurance-bar button { margin: 0 10px; }
+        .chip-help { text-align: center; color: #fffde7; font-size: 0.85em; margin-bottom: 8px; opacity: 0.8; }
     </style>
-</head>
-<body>
-    {% csrf_token %}
+{% endblock %}
+
+{% block content %}
     <div class="table">
-        <button class="close-btn" onclick="window.location.href='/'" title="Zpět na hlavní stránku">&times;</button>
-        <div class="balance-info" id="balance-info">Zůstatek: {{ balance }}</div>
+        <button class="close-btn" onclick="window.location.href='{% url 'home' %}'" title="Back to home">&times;</button>
+        <div class="balance-info" id="balance-info">Balance: {{ balance }}</div>
+        <div class="chip-help">💡 Left-click to ADD | Right-click to REMOVE from bet</div>
         <div class="chips">
-            <img class="chip" src="/static/main/chip10.png" onclick="setBet(10)" alt="10">
-            <img class="chip" src="/static/main/chip50.png" onclick="setBet(50)" alt="50">
-            <img class="chip" src="/static/main/chip100.png" onclick="setBet(100)" alt="100">
-            <img class="chip" src="/static/main/chip500.png" onclick="setBet(500)" alt="500">
+            <span class="chip" data-value="10" onclick="addBet(10); return false;" oncontextmenu="removeBet(10); return false;">10</span>
+            <span class="chip" data-value="50" onclick="addBet(50); return false;" oncontextmenu="removeBet(50); return false;">50</span>
+            <span class="chip" data-value="100" onclick="addBet(100); return false;" oncontextmenu="removeBet(100); return false;">100</span>
+            <span class="chip" data-value="500" onclick="addBet(500); return false;" oncontextmenu="removeBet(500); return false;">500</span>
         </div>
-        <div class="bet-info" id="bet-info">Sázka: 10</div>
+        <div class="bet-info" id="bet-info">Bet: 10</div>
+        <div class="insurance-bar" id="insurance-bar" style="display:none;">
+            Dealer has an Ace. Take insurance for <span id="insurance-amount"></span>?
+            <button class="btn-bj" onclick="takeInsurance()">Yes</button>
+            <button class="btn-bj" onclick="noInsurance()">No</button>
+        </div>
         <div class="section">
             <div class="dealer-label">DEALER</div>
             <div class="cards" id="dealer-cards"></div>
             <div class="score" id="dealer-score"></div>
         </div>
         <div class="section" id="player-section">
-            <div class="player-label">HRÁČ</div>
+            <div class="player-label">PLAYER</div>
             <div class="cards" id="player-cards"></div>
             <div class="score" id="player-score"></div>
         </div>
         <div class="section" id="split-section" style="display:none;">
             <div class="split-hands">
                 <div id="split-hand-0" class="split-hand">
-                    <div class="split-hand-label">LEVÁ RUKA</div>
+                    <div class="split-hand-label">LEFT HAND</div>
                     <div class="cards" id="split-cards-0"></div>
                     <div class="score" id="split-score-0"></div>
                     <div class="btns">
-                        <button class="btn-bj" onclick="splitHit(0)" id="split-hit-0">Přidat kartu</button>
-                        <button class="btn-bj" onclick="splitStand(0)" id="split-stand-0">Zůstat</button>
+                        <button class="btn-bj" onclick="splitHit(0)" id="split-hit-0">Hit</button>
+                        <button class="btn-bj" onclick="splitStand(0)" id="split-stand-0">Stand</button>
                         <button class="btn-bj" onclick="splitDouble(0)" id="split-double-0">Double</button>
                     </div>
                     <div class="message" id="split-msg-0"></div>
                 </div>
                 <div id="split-hand-1" class="split-hand">
-                    <div class="split-hand-label">PRAVÁ RUKA</div>
+                    <div class="split-hand-label">RIGHT HAND</div>
                     <div class="cards" id="split-cards-1"></div>
                     <div class="score" id="split-score-1"></div>
                     <div class="btns">
-                        <button class="btn-bj" onclick="splitHit(1)" id="split-hit-1">Přidat kartu</button>
-                        <button class="btn-bj" onclick="splitStand(1)" id="split-stand-1">Zůstat</button>
+                        <button class="btn-bj" onclick="splitHit(1)" id="split-hit-1">Hit</button>
+                        <button class="btn-bj" onclick="splitStand(1)" id="split-stand-1">Stand</button>
                         <button class="btn-bj" onclick="splitDouble(1)" id="split-double-1">Double</button>
                     </div>
                     <div class="message" id="split-msg-1"></div>
@@ -289,14 +97,17 @@
             </div>
         </div>
         <div class="btns" id="main-btns">
-            <button class="btn-bj" onclick="deal()" id="btn-deal">Rozdat</button>
-            <button class="btn-bj" onclick="hit()" id="btn-hit" disabled>Přidat kartu</button>
-            <button class="btn-bj" onclick="stand()" id="btn-stand" disabled>Zůstat</button>
+            <button class="btn-bj" onclick="deal()" id="btn-deal">Deal</button>
+            <button class="btn-bj" onclick="hit()" id="btn-hit" disabled>Hit</button>
+            <button class="btn-bj" onclick="stand()" id="btn-stand" disabled>Stand</button>
             <button class="btn-bj" onclick="doubleDown()" id="btn-double" disabled>Double</button>
             <button class="btn-bj" onclick="split()" id="btn-split" style="display:none;">Split</button>
         </div>
         <div class="message" id="message"></div>
     </div>
+{% endblock %}
+
+{% block extra_scripts %}
     <script>
         let deck, player, dealer, gameOver, message, bet = 10, balance = {{ balance }}, canBet = true, dealerHidden = true, started = false;
         let playerAnim = [], dealerAnim = [];
@@ -310,6 +121,9 @@
         let splitMsg = ["", ""];
         let splitDoubleUsed = [false, false];
         let doubleUsed = false;
+        let insuranceOffered = false;
+        let insuranceTaken = false;
+        let insuranceBet = 0;
 
         function createDeck() {
             const suits = ['♠', '♥', '♦', '♣'];
@@ -327,29 +141,32 @@
             let start = hideFirst ? 1 : 0;
             for (let i = start; i < cards.length; i++) {
                 let card = cards[i];
-                if (card.value === 'A') {
-                    value += 11; aces++;
-                } else if (['K','Q','J'].includes(card.value)) {
-                    value += 10;
-                } else {
-                    value += parseInt(card.value);
-                }
+                if (card.value === 'A') { value += 11; aces++; }
+                else if (['K','Q','J'].includes(card.value)) { value += 10; }
+                else { value += parseInt(card.value); }
             }
-            while (value > 21 && aces) {
-                value -= 10; aces--;
-            }
+            while (value > 21 && aces) { value -= 10; aces--; }
             return value;
         }
-        function isBlackjack(cards) {
-            return cards.length === 2 && getValue(cards) === 21;
-        }
+        function isBlackjack(cards) { return cards.length === 2 && getValue(cards) === 21; }
         function setBet(amount) {
             if (!canBet) return;
             bet = amount;
-            document.getElementById('bet-info').innerText = "Sázka: " + bet;
+            document.getElementById('bet-info').innerText = "Bet: " + bet;
             let chips = document.querySelectorAll('.chip');
             chips.forEach(chip => chip.classList.remove('selected'));
-            chips[[10,50,100,500].indexOf(amount)].classList.add('selected');
+            let index = [10,50,100,500].indexOf(amount);
+            if (index !== -1) chips[index].classList.add('selected');
+        }
+        function addBet(amount) {
+            if (!canBet) return;
+            bet += amount;
+            document.getElementById('bet-info').innerText = "Bet: " + bet;
+        }
+        function removeBet(amount) {
+            if (!canBet) return;
+            bet = Math.max(0, bet - amount);
+            document.getElementById('bet-info').innerText = "Bet: " + bet;
         }
         function canSplit(cards) {
             if (cards.length !== 2) return false;
@@ -358,12 +175,15 @@
             let v2 = values[cards[1].value] || parseInt(cards[1].value);
             return v1 === v2;
         }
-
         function deal() {
             splitMode = false;
             document.getElementById('split-section').style.display = "none";
             document.getElementById('player-section').style.display = "";
             document.getElementById('btn-split').style.display = "none";
+            document.getElementById('insurance-bar').style.display = "none";
+            insuranceOffered = false;
+            insuranceTaken = false;
+            insuranceBet = 0;
             doubleUsed = false;
             splitDoubleUsed = [false, false];
             deck = createDeck();
@@ -383,25 +203,17 @@
             document.getElementById('btn-double').disabled = true;
             document.getElementById('btn-deal').disabled = true;
             render();
-
             setTimeout(() => { addCard('player'); }, 200);
             setTimeout(() => { addCard('dealer'); }, 700);
             setTimeout(() => { addCard('player'); }, 1200);
-            setTimeout(() => { addCard('dealer'); 
-                afterDealOptions();
-            }, 1700);
+            setTimeout(() => { addCard('dealer'); afterDealOptions(); }, 1700);
         }
-
         function afterDealOptions() {
             document.getElementById('btn-hit').disabled = false;
             document.getElementById('btn-stand').disabled = false;
             document.getElementById('btn-double').disabled = false;
-            if (canSplit(player) && balance >= bet) {
-                document.getElementById('btn-split').style.display = "";
-            }
-            if (player.length === 2 && balance >= bet) {
-                document.getElementById('btn-double').disabled = false;
-            }
+            if (canSplit(player) && balance >= bet) document.getElementById('btn-split').style.display = "";
+            if (player.length === 2 && balance >= bet) document.getElementById('btn-double').disabled = false;
             if (isBlackjack(player)) {
                 dealerRevealPending = true;
                 dealerHidden = false;
@@ -411,10 +223,10 @@
                     dealerRevealPending = false;
                     render();
                     if (isBlackjack(dealer)) {
-                        message = "Remíza! Oba máte blackjack.";
+                        message = "Push! Both have blackjack.";
                         balance += bet;
                     } else {
-                        message = "Blackjack! Výhra 3:2";
+                        message = "Blackjack! Win 3:2";
                         balance += Math.floor(bet * 2.5);
                     }
                     gameOver = true;
@@ -423,7 +235,6 @@
                 }, 800);
             }
         }
-
         function addCard(who) {
             if (who === 'player') {
                 player.push(deck.pop());
@@ -439,7 +250,6 @@
                 setTimeout(() => { dealerAnim[dealer.length-1] = false; render(); }, 500);
             }
         }
-
         function hit() {
             if (gameOver || canBet || splitMode) return;
             player.push(deck.pop());
@@ -449,27 +259,17 @@
             setTimeout(() => { playerAnim[player.length-1] = false; render(); }, 500);
             if (getValue(player) > 21) {
                 setTimeout(() => {
-                    message = "Přesáhl jsi 21! Prohrál jsi.";
+                    message = "Bust! You lose.";
                     balance -= bet;
                     gameOver = true;
                     dealerRevealPending = true;
                     dealerHidden = false;
                     dealerFlip = true;
                     render();
-                    setTimeout(() => {
-                        dealerRevealPending = false;
-                        render();
-                        endGame();
-                        render();
-                    }, 600);
+                    setTimeout(() => { dealerRevealPending = false; render(); endGame(); render(); }, 600);
                 }, 500);
-            } else if (getValue(player) === 21) {
-                setTimeout(() => {
-                    stand();
-                }, 700);
             }
         }
-
         function stand() {
             if (gameOver || canBet || splitMode) return;
             dealerRevealPending = true;
@@ -479,10 +279,16 @@
             setTimeout(() => {
                 dealerRevealPending = false;
                 render();
-                dealerDraw();
+                if (dealer[0].value === 'A' && !insuranceOffered) {
+                    insuranceOffered = true;
+                    insuranceBet = Math.floor(bet/2);
+                    document.getElementById('insurance-amount').innerText = insuranceBet;
+                    document.getElementById('insurance-bar').style.display = "";
+                } else {
+                    dealerDraw();
+                }
             }, 600);
         }
-
         function doubleDown() {
             if (gameOver || canBet || splitMode || doubleUsed || balance < bet) return;
             doubleUsed = true;
@@ -490,22 +296,13 @@
             bet *= 2;
             document.getElementById('btn-double').disabled = true;
             hit();
-            setTimeout(() => {
-                if (!gameOver) stand();
-            }, 700);
+            setTimeout(() => { if (!gameOver) stand(); }, 700);
         }
-
         function split() {
             if (!(canSplit(player) && balance >= bet)) return;
             splitMode = true;
-            splitHands = [
-                [player[0], deck.pop()],
-                [player[1], deck.pop()]
-            ];
-            splitAnim = [
-                [false, true],
-                [false, true]
-            ];
+            splitHands = [[player[0], deck.pop()], [player[1], deck.pop()]];
+            splitAnim = [[false, true], [false, true]];
             splitActive = 0;
             splitDone = [false, false];
             splitMsg = ["", ""];
@@ -520,29 +317,15 @@
             render();
             setTimeout(() => { splitAnim[0][1] = false; splitAnim[1][1] = false; render(); }, 500);
         }
-
         function splitHit(hand) {
             if (!splitMode || splitDone[hand] || hand !== splitActive) return;
             splitHands[hand].push(deck.pop());
             splitAnim[hand].push(true);
             render();
             setTimeout(() => { splitAnim[hand][splitHands[hand].length-1] = false; render(); }, 500);
-            if (getValue(splitHands[hand]) > 21) {
-                splitMsg[hand] = "Přesáhl jsi 21!";
-                splitDone[hand] = true;
-                nextSplitHand();
-            } else if (getValue(splitHands[hand]) === 21) {
-                splitDone[hand] = true;
-                nextSplitHand();
-            }
+            if (getValue(splitHands[hand]) > 21) { splitMsg[hand] = "Přesáhl jsi 21!"; splitDone[hand] = true; nextSplitHand(); }
         }
-
-        function splitStand(hand) {
-            if (!splitMode || splitDone[hand] || hand !== splitActive) return;
-            splitDone[hand] = true;
-            nextSplitHand();
-        }
-
+        function splitStand(hand) { if (!splitMode || splitDone[hand] || hand !== splitActive) return; splitDone[hand] = true; nextSplitHand(); }
         function splitDouble(hand) {
             if (!splitMode || splitDone[hand] || hand !== splitActive || splitDoubleUsed[hand] || balance < bet) return;
             splitDoubleUsed[hand] = true;
@@ -554,20 +337,15 @@
             setTimeout(() => {
                 splitAnim[hand][splitHands[hand].length-1] = false;
                 render();
-                if (getValue(splitHands[hand]) > 21) {
-                    splitMsg[hand] = "Přesáhl jsi 21!";
-                }
+                if (getValue(splitHands[hand]) > 21) splitMsg[hand] = "Bust!";
                 splitDone[hand] = true;
                 nextSplitHand();
             }, 500);
         }
-
         function nextSplitHand() {
-            if (!splitDone[0]) {
-                splitActive = 0;
-            } else if (!splitDone[1]) {
-                splitActive = 1;
-            } else {
+            if (!splitDone[0]) splitActive = 0;
+            else if (!splitDone[1]) splitActive = 1;
+            else {
                 dealerRevealPending = true;
                 dealerHidden = false;
                 dealerFlip = true;
@@ -575,86 +353,57 @@
                 setTimeout(() => {
                     dealerRevealPending = false;
                     render();
-                    splitDealerDraw();
+                    if (dealer[0].value === 'A' && !insuranceOffered) {
+                        insuranceOffered = true;
+                        insuranceBet = Math.floor(bet/2);
+                        document.getElementById('insurance-amount').innerText = insuranceBet;
+                        document.getElementById('insurance-bar').style.display = "";
+                    } else {
+                        splitDealerDraw();
+                    }
                 }, 600);
             }
             render();
         }
-
         function splitDealerDraw() {
             if (getValue(dealer) < 17) {
                 dealer.push(deck.pop());
                 dealerAnim = Array(dealer.length).fill(false);
                 dealerAnim[dealer.length-1] = true;
                 render();
-                setTimeout(() => {
-                    dealerAnim[dealer.length-1] = false;
-                    render();
-                    splitDealerDraw();
-                }, 500);
+                setTimeout(() => { dealerAnim[dealer.length-1] = false; render(); splitDealerDraw(); }, 500);
             } else {
                 for (let h = 0; h < 2; h++) {
                     let p = getValue(splitHands[h]);
                     let d = getValue(dealer);
                     let handBet = bet * (splitDoubleUsed[h] ? 2 : 1);
-                    if (p > 21) {
-                        splitMsg[h] = "Prohrál jsi!";
-                    } else if (d > 21 || p > d) {
-                        splitMsg[h] = "Vyhrál jsi!";
-                        balance += handBet * 2;
-                    } else if (p < d) {
-                        splitMsg[h] = "Prohrál jsi!";
-                    } else {
-                        splitMsg[h] = "Remíza!";
-                        balance += handBet;
-                    }
+                    if (p > 21) splitMsg[h] = "You lose!";
+                    else if (d > 21 || p > d) { splitMsg[h] = "You win!"; balance += handBet * 2; }
+                    else if (p < d) splitMsg[h] = "You lose!";
+                    else { splitMsg[h] = "Push!"; balance += handBet; }
                 }
                 gameOver = true;
                 setTimeout(() => { endGame(); render(); }, 600);
             }
         }
-
         function dealerDraw() {
             if (getValue(dealer) < 17) {
                 dealer.push(deck.pop());
                 dealerAnim = Array(dealer.length).fill(false);
                 dealerAnim[dealer.length-1] = true;
                 render();
-                setTimeout(() => {
-                    dealerAnim[dealer.length-1] = false;
-                    render();
-                    dealerDraw();
-                }, 500);
+                setTimeout(() => { dealerAnim[dealer.length-1] = false; render(); dealerDraw(); }, 500);
             } else {
                 let p = getValue(player);
                 let d = getValue(dealer);
-                if (p > 21) {
-                    message = "Prohrál jsi!";
-                } else if (d > 21 || p > d) {
-                    message = "Vyhrál jsi!";
-                    balance += bet * 2;
-                } else if (p < d) {
-                    message = "Prohrál jsi!";
-                } else {
-                    message = "Remíza!";
-                    balance += bet;
-                }
+                if (p > 21) message = "You lose!";
+                else if (d > 21 || p > d) { message = "You win!"; balance += bet * 2; }
+                else if (p < d) message = "You lose!";
+                else { message = "Push!"; balance += bet; }
                 gameOver = true;
                 setTimeout(() => { endGame(); render(); }, 600);
             }
         }
-
-        function saveBalance() {
-            fetch('/update_balance/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                },
-                body: 'balance=' + balance
-            });
-        }
-
         function endGame() {
             document.getElementById('btn-hit').disabled = true;
             document.getElementById('btn-stand').disabled = true;
@@ -665,9 +414,28 @@
             started = false;
             dealerFlip = false;
             dealerRevealPending = false;
-            saveBalance();
+            insuranceOffered = false;
+            document.getElementById('insurance-bar').style.display = "none";
         }
-
+        function takeInsurance() { if (!insuranceOffered || insuranceTaken || balance < insuranceBet) return; insuranceTaken = true; balance -= insuranceBet; document.getElementById('insurance-bar').style.display = "none"; checkInsurance(); }
+        function noInsurance() { insuranceTaken = false; document.getElementById('insurance-bar').style.display = "none"; checkInsurance(); }
+        function checkInsurance() {
+            if (isBlackjack(dealer)) {
+                dealerRevealPending = false;
+                dealerHidden = false;
+                dealerFlip = true;
+                render();
+                setTimeout(() => {
+                    if (insuranceTaken) { message = "Dealer has Blackjack! Insurance paid."; balance += insuranceBet * 3; }
+                    else message = "Dealer has Blackjack! You lose.";
+                    gameOver = true;
+                    endGame();
+                    render();
+                }, 800);
+            } else {
+                if (splitMode) splitDealerDraw(); else dealerDraw();
+            }
+        }
         function render() {
             let dealerHTML = '';
             for (let i = 0; i < (dealer ? dealer.length : 0); i++) {
@@ -676,27 +444,15 @@
                         <span class="flip-container${dealerFlip ? ' flipped' : ''}">
                             <span class="flipper">
                                 <span class="flip-front card back"></span>
-                                <span class="flip-back card${dealerAnim[i] ? ' deal-fly' : ''}">
-                                </span>
-                            </span>
-                        </span>
-                    `;
-                } else if (i === 0 && dealerFlip) {
-                    dealerHTML += `
-                        <span class="flip-container flipped">
-                            <span class="flipper">
-                                <span class="flip-front card back"></span>
-                                <span class="flip-back card${dealerAnim[i] ? ' deal-fly' : ''}${(dealer[i].suit === '♥' || dealer[i].suit === '♦') ? ' red' : ''}">
-                                    <div>${dealer[i].value}</div>
-                                    <div>${dealer[i].suit}</div>
-                                </span>
+                                <span class="flip-back card${dealerAnim[i] ? ' deal-fly' : ''}"></span>
                             </span>
                         </span>
                     `;
                 } else {
+                    const suitClass = (dealer[i].suit === '♥' || dealer[i].suit === '♦') ? ' red' : '';
                     dealerHTML += `
                         <span class="card-container">
-                            <span class="card${dealerAnim[i] ? ' deal-fly' : ''}${(dealer[i].suit === '♥' || dealer[i].suit === '♦') ? ' red' : ''}">
+                            <span class="card${dealerAnim[i] ? ' deal-fly' : ''}${suitClass}">
                                 <div>${dealer[i].value}</div>
                                 <div>${dealer[i].suit}</div>
                             </span>
@@ -705,24 +461,25 @@
                 }
             }
             document.getElementById('dealer-cards').innerHTML = dealerHTML;
-            document.getElementById('dealer-score').innerText = (dealerHidden || dealerRevealPending) && started ? "?" : (dealer ? "Součet: " + getValue(dealer) : "");
-
+            document.getElementById('dealer-score').innerText = (dealerHidden || dealerRevealPending) && started ? "?" : (dealer ? "Total: " + getValue(dealer) : "");
             if (splitMode) {
                 document.getElementById('split-section').style.display = "";
                 document.getElementById('player-section').style.display = "none";
                 for (let h = 0; h < 2; h++) {
                     let html = '';
                     for (let i = 0; i < splitHands[h].length; i++) {
+                        const suitClass = (splitHands[h][i].suit === '♥' || splitHands[h][i].suit === '♦') ? ' red' : '';
                         html += `
                             <span class="card-container">
-                                <span class="card${splitAnim[h][i] ? ' deal-fly' : ''}${(splitHands[h][i].suit === '♥' || splitHands[h][i].suit === '♦') ? ' red' : ''}">
+                                <span class="card${splitAnim[h][i] ? ' deal-fly' : ''}${suitClass}">
                                     <div>${splitHands[h][i].value}</div>
                                     <div>${splitHands[h][i].suit}</div>
                                 </span>
-                            </span>`;
+                            </span>
+                        `;
                     }
                     document.getElementById('split-cards-'+h).innerHTML = html;
-                    document.getElementById('split-score-'+h).innerText = "Součet: " + getValue(splitHands[h]);
+                    document.getElementById('split-score-'+h).innerText = "Total: " + getValue(splitHands[h]);
                     document.getElementById('split-hand-'+h).className = "split-hand" + (splitActive === h ? " split-active" : "");
                     document.getElementById('split-hit-'+h).disabled = splitDone[h] || splitActive !== h;
                     document.getElementById('split-stand-'+h).disabled = splitDone[h] || splitActive !== h;
@@ -734,9 +491,10 @@
                 document.getElementById('player-section').style.display = "";
                 let playerHTML = '';
                 for (let i = 0; i < (player ? player.length : 0); i++) {
+                    const suitClass = (player[i].suit === '♥' || player[i].suit === '♦') ? ' red' : '';
                     playerHTML += `
                         <span class="card-container">
-                            <span class="card${playerAnim[i] ? ' deal-fly' : ''}${(player[i].suit === '♥' || player[i].suit === '♦') ? ' red' : ''}">
+                            <span class="card${playerAnim[i] ? ' deal-fly' : ''}${suitClass}">
                                 <div>${player[i].value}</div>
                                 <div>${player[i].suit}</div>
                             </span>
@@ -744,16 +502,13 @@
                     `;
                 }
                 document.getElementById('player-cards').innerHTML = playerHTML;
-                document.getElementById('player-score').innerText = player ? "Součet: " + getValue(player) : "";
+                document.getElementById('player-score').innerText = player ? "Total: " + getValue(player) : "";
             }
-
-            document.getElementById('bet-info').innerText = "Sázka: " + bet;
-            document.getElementById('balance-info').innerText = "Zůstatek: " + balance;
+            document.getElementById('bet-info').innerText = "Bet: " + bet;
+            document.getElementById('balance-info').innerText = "Balance: " + balance;
             document.getElementById('message').innerText = message;
         }
-
         setBet(10);
         render();
     </script>
-</body>
-</html>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Battle Pass - Casino Web{% endblock %}
+
+{% block extra_head %}
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .battle-pass-container { max-width: 1200px; margin: 40px auto; padding: 20px; }
+        .battle-pass-header { text-align: center; color: #fff; margin-bottom: 40px; }
+        .battle-pass-header h1 { font-size: 3em; margin-bottom: 10px; }
+        .level-info { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-bottom: 30px; text-align: center; color: #fff; }
+        .progress-bar { background: #333; border-radius: 10px; height: 20px; margin: 10px 0; }
+        .progress-fill { background: linear-gradient(90deg, #ff6b6b, #ffa500); height: 100%; border-radius: 10px; transition: width 0.5s; }
+        .rewards-section { display: flex; justify-content: space-between; gap: 20px; }
+        .rewards-column { flex: 1; background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; }
+        .rewards-column h2 { color: #fff; text-align: center; margin-bottom: 20px; }
+        .reward-item { background: rgba(255,255,255,0.2); border-radius: 10px; padding: 15px; margin-bottom: 10px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .reward-item.completed { background: rgba(0,255,0,0.3); }
+        .reward-level { font-weight: bold; }
+        .reward-desc { flex: 1; margin-left: 10px; }
+        .claim-btn { background: #28a745; color: #fff; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        .claim-btn:disabled { background: #6c757d; cursor: not-allowed; }
+        .premium-section { background: linear-gradient(135deg, #ffd700, #ffed4e); border-radius: 15px; padding: 20px; text-align: center; color: #333; }
+        .premium-section h2 { margin-bottom: 20px; }
+        .buy-btn { background: #dc3545; color: #fff; border: none; padding: 15px 30px; font-size: 1.2em; border-radius: 10px; cursor: pointer; margin-top: 20px; }
+        .buy-btn:hover { background: #c82333; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="battle-pass-container">
+        <div class="battle-pass-header">
+            <h1>Battle Pass</h1>
+            <p>Complete quests and level up to earn rewards!</p>
+        </div>
+        
+        <div class="level-info">
+            <h2>Current Level: {{ battlepass.level }}</h2>
+            <p>XP: {{ battlepass.xp }} / {{ battlepass.xp_for_level }}</p>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ progress_percent }}%;"></div>
+            </div>
+        </div>
+        
+        <div class="rewards-section">
+            <div class="rewards-column">
+                <h2>Free Rewards</h2>
+                {% for i in "12345678910" %}
+                    {% if forloop.counter <= battlepass.level %}
+                        {% if forloop.counter in battlepass.claimed_rewards %}
+                            <div class="reward-item completed">
+                                <span class="reward-level">Level {{ forloop.counter }}</span>
+                                <span class="reward-desc">{{ forloop.counter }}00 Chips</span>
+                                <button class="claim-btn" disabled>Claimed</button>
+                            </div>
+                        {% else %}
+                            <div class="reward-item">
+                                <span class="reward-level">Level {{ forloop.counter }}</span>
+                                <span class="reward-desc">{{ forloop.counter }}00 Chips</span>
+                                <button class="claim-btn" onclick="claimReward({{ forloop.counter }})">Claim</button>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="reward-item">
+                            <span class="reward-level">Level {{ forloop.counter }}</span>
+                            <span class="reward-desc">{{ forloop.counter }}00 Chips</span>
+                            <button class="claim-btn" disabled>Locked</button>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            <div class="rewards-column premium-section">
+                <h2>Premium Pass</h2>
+                <p>Unlock double rewards and exclusive items!</p>
+                <ul style="text-align: left; display: inline-block;">
+                    <li>Double Chips</li>
+                    <li>Exclusive Skins</li>
+                    <li>Bonus XP</li>
+                    <li>Early Access</li>
+                </ul>
+                <br>
+                <button class="buy-btn" onclick="buyPremium()">Buy Premium Pass - $10</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        function buyPremium() {
+            alert('This is a fake paywall! In a real app, this would process payment.');
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function claimReward(level) {
+            fetch('/claim_reward/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ level: level })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Claimed ' + data.chips + ' chips!');
+                    location.reload();
+                } else {
+                    alert('Failed to claim.');
+                }
+            });
+        }
+    </script>
+{% endblock %}
