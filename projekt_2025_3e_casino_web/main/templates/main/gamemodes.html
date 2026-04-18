@@ -1,85 +1,19 @@
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Modes - Casino Web</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: white;
-            min-height: 100vh;
-        }
-        .navbar {
-            background: #f8f9fa !important;
-            color: black !important;
-        }
-        .navbar .navbar-brand, .navbar .nav-link, .navbar .navbar-text {
-            color: black !important;
-        }
-        .btn-primary {
-            background: linear-gradient(45deg, #ff6b6b, #ffa500);
-            border: none;
-        }
-        .btn-primary:hover {
-            background: linear-gradient(45deg, #ff5252, #ff8c00);
-        }
-        .game-card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
-        .game-card:hover {
-            transform: translateY(-5px);
-        }
-        .profile-section {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'home' %}">Casino Web</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'home' %}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#">Game Modes</a>
-                    </li>
-                </ul>
-                <div class="d-flex">
-                    {% if user.is_authenticated %}
-                        <div class="dropdown">
-                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                {{ user.username }}
-                            </button>
-                            <ul class="dropdown-menu" aria-labelledby="profileDropdown">
-                                <li><h6 class="dropdown-header">Váš profil</h6></li>
-                                <li><span class="dropdown-item-text">Balance: ${{ user.userprofile.balance }}</span></li>
-                                <li><span class="dropdown-item-text">Vyhráno: $0.00</span></li>
-                                <li><span class="dropdown-item-text">Prohráno: $0.00</span></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'account_logout' %}">Odhlásit se</a></li>
-                            </ul>
-                        </div>
-                    {% else %}
-                        <a href="{% url 'signin' %}" class="btn btn-outline-light">Přihlásit se</a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </nav>
+{% extends 'main/base.html' %}
 
+{% block title %}Game Modes - Casino Web{% endblock %}
+
+{% block extra_head %}
+    <style>
+        body { background: white; }
+        .btn-primary { background: linear-gradient(45deg, #ff6b6b, #ffa500); border: none; }
+        .btn-primary:hover { background: linear-gradient(45deg, #ff5252, #ff8c00); }
+        .game-card { border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .game-card:hover { transform: translateY(-5px); }
+        .profile-section { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-bottom: 30px; }
+    </style>
+{% endblock %}
+
+{% block content %}
     <div class="container mt-5">
         <div class="profile-section">
             <h3>Váš profil</h3>
@@ -104,7 +38,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Blackjack</h5>
                         <p class="card-text">Porazte dealera v blackjacku!</p>
-                        <button class="btn btn-primary" onclick="alert('Blackjack zatím není implementován')">Hrát</button>
+                        <button class="btn btn-primary" onclick="window.location.href='{% url 'blackjack' %}'">Hrát</button>
                     </div>
                 </div>
             </div>
@@ -119,7 +53,4 @@
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}

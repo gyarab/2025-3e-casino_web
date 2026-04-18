@@ -8,8 +8,13 @@ import json
 import random
 from .models import UserProfile, BattlePass, Quest, UserQuestProgress
 
+@login_required
 def blackjack(request):
-    return render(request, 'main/blackjack.html')
+    try:
+        balance = request.user.userprofile.balance
+    except UserProfile.DoesNotExist:
+        balance = 0
+    return render(request, 'main/blackjack.html', {'balance': balance})
 
 def signin(request):
     return render(request, 'main/signin.html')
@@ -28,6 +33,27 @@ def slots(request):
     except UserProfile.DoesNotExist:
         balance = 0
     return render(request, 'main/slots.html', {'balance': balance})
+
+@login_required
+def battlepass(request):
+    battlepass = request.user.battlepass
+    progress_percent = int((battlepass.xp / battlepass.xp_for_level) * 100) if battlepass.xp_for_level > 0 else 0
+    return render(request, 'main/battlepass.html', {'battlepass': battlepass, 'progress_percent': progress_percent})
+
+@login_required
+@require_http_methods(["POST"])
+def claim_reward(request):
+    data = json.loads(request.body)
+    level = data.get('level')
+    battlepass = request.user.battlepass
+    if level <= battlepass.level and level not in battlepass.claimed_rewards:
+        battlepass.claimed_rewards.append(level)
+        chips = level * 100
+        request.user.userprofile.balance += Decimal(chips)
+        request.user.userprofile.save()
+        battlepass.save()
+        return JsonResponse({'success': True, 'chips': chips})
+    return JsonResponse({'success': False})
 
 @login_required
 @require_http_methods(["POST"])
@@ -79,32 +105,31 @@ def spin_slot(request):
                 win = bet * Decimal(2)
             else:
                 win = bet * Decimal(1.5)
-        
-        # Add win to balance
-        user_profile.balance += win + bet  # Add bet back + win
+
+        # Return bet + win only when the player wins
+        if win > 0:
+            user_profile.balance += bet + win
         user_profile.save()
-        
+
         # Track quest progress
         try:
             user_quests = UserQuestProgress.objects.filter(
                 user=request.user,
                 completed=False
             )
-            
             for quest_progress in user_quests:
                 quest = quest_progress.quest
-                
+
                 # Track games played
                 if quest.objective_type == 'games_played':
                     quest_progress.current_progress += 1
                     if quest_progress.current_progress >= quest.objective_amount:
                         quest_progress.completed = True
-                        # Add rewards
                         battle_pass = request.user.battlepass
                         battle_pass.xp += quest.reward_xp
                         check_level_up(battle_pass)
                         battle_pass.save()
-                
+
                 # Track money won
                 elif quest.objective_type == 'money_won':
                     if win > 0:
@@ -115,11 +140,11 @@ def spin_slot(request):
                             battle_pass.xp += quest.reward_xp
                             check_level_up(battle_pass)
                             battle_pass.save()
-                
+
                 quest_progress.save()
         except:
             pass  # Quest tracking is not critical
-        
+
         return JsonResponse({
             'success': True,
             'reels': reels,
@@ -128,22 +153,16 @@ def spin_slot(request):
             'multiplier': multiplier,
             'new_balance': str(user_profile.balance)
         })
-    
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
 
 def check_level_up(battle_pass):
-    """Check if battle pass leveled up and grant rewards"""
+    """Check if battle pass leveled up"""
     while battle_pass.xp >= battle_pass.xp_for_level:
         battle_pass.xp -= battle_pass.xp_for_level
         battle_pass.level += 1
-        
-        # Grant rewards every 5 levels
-        if battle_pass.level % 5 == 0:
-            reward_chips = [100, 250, 500][(battle_pass.level // 5) - 1] if (battle_pass.level // 5) <= 3 else 500
-            battle_pass.user.userprofile.balance += Decimal(reward_chips)
-            battle_pass.user.userprofile.save()
 
 
 def get_battle_pass_data(request):

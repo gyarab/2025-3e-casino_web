@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Casino Web{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f2f6fa;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        .navbar {
+            background: linear-gradient(270deg, #ff6b6b, #ffa500, #ff6b6b);
+            background-size: 600% 600%;
+            animation: gradientMove 6s linear infinite;
+            color: #fff !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        @keyframes gradientMove {
+            0% {background-position: 0% 50%;}
+            50% {background-position: 100% 50%;}
+            100% {background-position: 0% 50%;}
+        }
+        .navbar .navbar-brand,
+        .navbar .nav-link,
+        .navbar .navbar-text,
+        .navbar .btn {
+            color: #fff !important;
+        }
+        .navbar .nav-link.active {
+            font-weight: 700;
+        }
+        .navbar .btn-outline-light {
+            border-color: rgba(255,255,255,0.85);
+            color: #fff;
+        }
+        .navbar .btn-light {
+            color: #333;
+        }
+        .navbar .dropdown-menu {
+            min-width: 200px;
+        }
+        .navbar .dropdown-item-text {
+            font-size: 0.95em;
+            color: #333;
+        }
+        .page-content {
+            padding-top: 100px;
+        }
+        @media (max-width: 576px) {
+            .page-content {
+                padding-top: 120px;
+            }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg fixed-top navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">Casino Web</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarMain">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Home</a></li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    {% if user.is_authenticated %}
+                        <div class="dropdown">
+                            <button class="btn btn-outline-light dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                {{ user.username }}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                                <li><h6 class="dropdown-header">Profile</h6></li>
+                                <li><span class="dropdown-item-text">Balance: ${{ user.userprofile.balance }}</span></li>
+                                <li><a class="dropdown-item" href="{% url 'battlepass' %}">Level: {{ user.battlepass.level }}{% if unclaimed_count > 0 %} <span class="badge bg-danger">{{ unclaimed_count }}</span>{% endif %}</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'battlepass' %}">Battle Pass</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'account_logout' %}">Logout</a></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <a class="btn btn-outline-light me-2" href="{% url 'account_login' %}">Sign in</a>
+                        <a class="btn btn-secondary" href="{% url 'account_signup' %}">Register</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="page-content">
+        {% block content %}{% endblock %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

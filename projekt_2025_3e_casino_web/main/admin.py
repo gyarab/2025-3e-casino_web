@@ -8,9 +8,13 @@ class UserProfileInline(admin.StackedInline):
     can_delete = False
     verbose_name_plural = 'User Profile'
 
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'balance', 'created_at')
+    search_fields = ('user__username',)
+
 # Re-register UserAdmin with the inline
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
 UserAdmin.inlines = (UserProfileInline,)
 
-admin.site.register(UserProfile)
+admin.site.register(UserProfile, UserProfileAdmin)
