@@ -16,18 +16,19 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from main.views import signin, home, gamemodes, slots, spin_slot, get_battle_pass_data, get_quests_data
 from main import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
-    path('home/', home, name='home'),
-    path('gamemodes/', gamemodes, name='gamemodes'),
+    path('home/', views.home, name='home_page'),
+    path('index/', views.home, name='index'),
+    path('signin/', views.signin, name='signin'),
     path('blackjack/', views.blackjack, name='blackjack'),
-    path('slots/', slots, name='slots'),
-    path('api/spin/', spin_slot, name='spin_slot'),
-    path('api/battlepass/', get_battle_pass_data, name='get_battle_pass'),
-    path('api/quests/', get_quests_data, name='get_quests'),
+    path('shop/', views.shop, name='shop'),
+    path('gamemodes/', views.gamemodes, name='gamemodes'),
     path('accounts/', include('allauth.urls')),
 ]
+
+
+

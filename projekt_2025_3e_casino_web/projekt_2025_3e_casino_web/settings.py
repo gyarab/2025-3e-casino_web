@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    # 'allauth.socialaccount.providers.google',  # Disabled - requires requests module
+    'allauth.socialaccount.providers.google',
     
     'main',
 ]
@@ -141,8 +141,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = '/home/'
 ACCOUNT_SIGNUP_REDIRECT_URL = '/home/'
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = 'none'
-ACCOUNT_USERNAME_REQUIRED = False
-LOGIN_URL = 'account_login'
+ACCOUNT_SIGNUP_FIELDS = ['email*','username*', 'password1*', 'password2*']
