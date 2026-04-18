@@ -8,6 +8,7 @@ from django.shortcuts import redirect
 from decimal import Decimal
 import json
 import random
+from django.contrib.auth.decorators import login_required
 from .models import UserProfile, BattlePass, Quest, UserQuestProgress
 
 @login_required
@@ -28,13 +29,43 @@ def home(request):
 def update_balance(request):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
+            data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
             new_balance = float(data.get('balance', 0))
+            game = data.get('game')
+            print(f'Update balance: balance={new_balance}, game={game}')
             profile = request.user.userprofile
             profile.balance = new_balance
             profile.save()
+            
+            # Track quest progress if game is specified
+            if game:
+                try:
+                    user_quests = UserQuestProgress.objects.filter(
+                        user=request.user,
+                        completed=False
+                    )
+                    for quest_progress in user_quests:
+                        quest = quest_progress.quest
+                        print(f'Checking quest: {quest.title}, type: {quest.objective_type}')
+                        
+                        if game == 'blackjack' and quest.objective_type == 'games_played':
+                            quest_progress.current_progress += 1
+                            print(f'Updated games_played quest progress to {quest_progress.current_progress}')
+                            if quest_progress.current_progress >= quest.objective_amount:
+                                quest_progress.completed = True
+                                battle_pass = request.user.battlepass
+                                battle_pass.xp += quest.reward_xp
+                                check_level_up(battle_pass)
+                                battle_pass.save()
+                        
+                        quest_progress.save()
+                except Exception as e:
+                    print(f'Quest tracking error: {e}')
+                    pass  # Quest tracking is not critical
+            
             return JsonResponse({'success': True})
         except Exception as e:
+            print(f'Update balance error: {e}')
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
     return JsonResponse({'success': False}, status=400)
 

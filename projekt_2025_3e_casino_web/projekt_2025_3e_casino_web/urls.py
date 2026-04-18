@@ -37,11 +37,6 @@ urlpatterns = [
     path('api/quests/', views.get_quests_data, name='quests_data'),
     path('accounts/', include('allauth.urls')),
 ]
-    path('api/battlepass/', get_battle_pass_data, name='get_battle_pass'),
-    path('api/quests/', get_quests_data, name='get_quests'),
->>>>>>> 1cd7abd2fb42d4053f0c388f585bc0006fe61082
-    path('accounts/', include('allauth.urls')),
-]
 
 
 
