@@ -27,6 +27,11 @@ urlpatterns = [
     path('blackjack/', views.blackjack, name='blackjack'),
     path('shop/', views.shop, name='shop'),
     path('gamemodes/', views.gamemodes, name='gamemodes'),
+    path('slots/', views.slots, name='slots'),
+    path('update_balance/', views.update_balance, name='update_balance'),
+    path('api/spin-slot/', views.spin_slot, name='spin_slot'),
+    path('api/battle-pass/', views.get_battle_pass_data, name='battle_pass_data'),
+    path('api/quests/', views.get_quests_data, name='quests_data'),
     path('accounts/', include('allauth.urls')),
 ]
 
