@@ -5,8 +5,16 @@ from django.dispatch import receiver
 from datetime import datetime, timedelta
 
 class UserProfile(models.Model):
+    THEME_CHOICES = [
+        ('neon', 'Neon'),
+        ('gold', 'Gold'),
+        ('retro', 'Retro Vegas'),
+        ('minimal', 'Minimal'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     balance = models.DecimalField(max_digits=20, decimal_places=2, default=1000.00)
+    theme = models.CharField(max_length=20, choices=THEME_CHOICES, default='neon')
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -33,7 +41,7 @@ class Quest(models.Model):
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=255)
     quest_type = models.CharField(max_length=10, choices=QUEST_TYPES)
-    objective_type = models.CharField(max_length=50)  # 'games_played', 'money_won', 'games_in_type'
+    objective_type = models.CharField(max_length=50)  # 'games_played', 'money_won', 'blackjack_games', 'slots_games', 'games_won', 'blackjack_wins', 'slots_wins'
     objective_amount = models.IntegerField()  # How many
     reward_xp = models.IntegerField()
     reward_coins = models.IntegerField(default=0)

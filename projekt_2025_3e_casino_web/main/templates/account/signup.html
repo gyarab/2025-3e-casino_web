@@ -1,33 +1,78 @@
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - Casino Web</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% extends 'main/base.html' %}
+
+{% block title %}Sign Up - Casino Web{% endblock %}
+
+{% block extra_head %}
     <style>
         body {
-            background: white;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1810 50%, #1a1a1a 100%);
+            background-attachment: fixed;
+            font-family: 'Georgia', 'Times New Roman', serif;
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .card {
-            border: none;
+            border: 3px solid #ffd700;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: linear-gradient(135deg, #2d1810 0%, #1a1a1a 100%);
+            color: #f4e4bc;
+        }
+        .card-title {
+            color: #f4e4bc;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+        .card h2 {
+            color: #f4e4bc;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        .form-label {
+            color: #f4e4bc;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        .form-control {
+            background: #2d1810;
+            border: 2px solid #ffd700;
+            color: #f4e4bc;
+            border-radius: 8px;
+        }
+        .form-control::placeholder {
+            color: #f4e4bc;
+            opacity: 0.7;
         }
         .btn-primary {
-            background: linear-gradient(45deg, #ff6b6b, #ffa500);
-            border: none;
+            background: linear-gradient(45deg, #daa520, #ffd700);
+            border: 2px solid #ffd700;
+            color: #8b0000;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
         }
         .btn-primary:hover {
-            background: linear-gradient(45deg, #ff5252, #ff8c00);
+            background: linear-gradient(45deg, #ffd700, #daa520);
+        }
+        .alert-danger {
+            background: linear-gradient(135deg, #8b0000, #b22222);
+            border: 2px solid #ffd700;
+            color: #f4e4bc;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        .text-danger {
+            color: #ffd700 !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        a {
+            color: #ffd700;
+            text-decoration: none;
+        }
+        a:hover {
+            color: #f4e4bc;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
     {% load account %}
     <div class="container">
         <div class="row justify-content-center">
@@ -35,7 +80,7 @@
                 <div class="card">
                     <div class="card-body p-5">
                         <h1 class="card-title text-center mb-4">Casino Web</h1>
-                        <h2 class="text-center mb-4">Registrace</h2>
+                        <h2 class="text-center mb-4">Sign Up</h2>
                         {% if form.non_field_errors %}
                             <div class="alert alert-danger">
                                 {% for error in form.non_field_errors %}
@@ -59,18 +104,15 @@
                                 </div>
                             {% endfor %}
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg">Registrovat se</button>
+                                <button type="submit" class="btn btn-primary btn-lg">Sign Up</button>
                             </div>
                         </form>
                         <p class="text-center mt-3">
-                            <a href="{% url 'account_login' %}">Již máte účet? Přihlaste se</a>
+                            <a href="{% url 'account_login' %}">Already have an account? Sign in</a>
                         </p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}

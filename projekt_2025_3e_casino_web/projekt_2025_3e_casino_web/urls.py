@@ -29,6 +29,7 @@ urlpatterns = [
     path('gamemodes/', views.gamemodes, name='gamemodes'),
     path('slots/', views.slots, name='slots'),
     path('battlepass/', views.battlepass, name='battlepass'),
+    path('settings/', views.settings, name='settings'),
     path('claim_reward/', views.claim_reward, name='claim_reward'),
     path('update_balance/', views.update_balance, name='update_balance'),
     path('api/spin-slot/', views.spin_slot, name='spin_slot'),

@@ -38,6 +38,24 @@ class Command(BaseCommand):
                 'reward_xp': 50,
                 'reward_chips': 0
             },
+            {
+                'title': 'Win 3 Blackjack Games',
+                'description': 'Win 3 Blackjack games',
+                'quest_type': 'daily',
+                'objective_type': 'blackjack_wins',
+                'objective_amount': 3,
+                'reward_xp': 80,
+                'reward_chips': 250
+            },
+            {
+                'title': 'Play 5 Slot Games',
+                'description': 'Play Slot machine 5 times',
+                'quest_type': 'daily',
+                'objective_type': 'slots_games',
+                'objective_amount': 5,
+                'reward_xp': 60,
+                'reward_chips': 100
+            },
         ]
         
         # Weekly quests
@@ -68,6 +86,24 @@ class Command(BaseCommand):
                 'objective_amount': 10,
                 'reward_xp': 175,
                 'reward_chips': 750
+            },
+            {
+                'title': 'Play 10 Slot Games',
+                'description': 'Play Slot machine 10 times',
+                'quest_type': 'weekly',
+                'objective_type': 'slots_games',
+                'objective_amount': 10,
+                'reward_xp': 130,
+                'reward_chips': 400
+            },
+            {
+                'title': 'Win 5 Slot Games',
+                'description': 'Win 5 Slot machine games',
+                'quest_type': 'weekly',
+                'objective_type': 'slots_wins',
+                'objective_amount': 5,
+                'reward_xp': 160,
+                'reward_chips': 600
             },
         ]
         

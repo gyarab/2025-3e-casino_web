@@ -5,10 +5,10 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.shortcuts import redirect
+from django.utils import timezone
 from decimal import Decimal
 import json
 import random
-from django.contrib.auth.decorators import login_required
 from .models import UserProfile, BattlePass, Quest, UserQuestProgress
 
 @login_required
@@ -26,6 +26,33 @@ def home(request):
     return render(request, 'main/home.html')
 
 @login_required
+def settings(request):
+    theme_choices = [
+        ('neon', 'Neon'),
+        ('gold', 'Gold'),
+        ('retro', 'Retro Vegas'),
+        ('minimal', 'Minimal'),
+    ]
+
+    if request.method == 'POST':
+        selected_theme = request.POST.get('theme', 'neon')
+        if selected_theme in dict(theme_choices):
+            profile = request.user.userprofile
+            profile.theme = selected_theme
+            profile.save()
+            messages.success(request, 'Motiv byl uložen.')
+        else:
+            messages.error(request, 'Vybraný motiv není platný.')
+        return redirect('settings')
+
+    profile = request.user.userprofile
+    context = {
+        'theme_choices': theme_choices,
+        'current_theme': profile.theme,
+    }
+    return render(request, 'main/settings.html', context)
+
+@login_required
 def update_balance(request):
     if request.method == 'POST':
         try:
@@ -39,29 +66,9 @@ def update_balance(request):
             
             # Track quest progress if game is specified
             if game:
-                try:
-                    user_quests = UserQuestProgress.objects.filter(
-                        user=request.user,
-                        completed=False
-                    )
-                    for quest_progress in user_quests:
-                        quest = quest_progress.quest
-                        print(f'Checking quest: {quest.title}, type: {quest.objective_type}')
-                        
-                        if game == 'blackjack' and quest.objective_type == 'games_played':
-                            quest_progress.current_progress += 1
-                            print(f'Updated games_played quest progress to {quest_progress.current_progress}')
-                            if quest_progress.current_progress >= quest.objective_amount:
-                                quest_progress.completed = True
-                                battle_pass = request.user.battlepass
-                                battle_pass.xp += quest.reward_xp
-                                check_level_up(battle_pass)
-                                battle_pass.save()
-                        
-                        quest_progress.save()
-                except Exception as e:
-                    print(f'Quest tracking error: {e}')
-                    pass  # Quest tracking is not critical
+                won = str(data.get('won', '')).lower() in ['true', '1', 'yes']
+                win_amount = float(data.get('win', 0) or 0)
+                track_quest_progress(request, game=game, won=won, win_amount=win_amount)
             
             return JsonResponse({'success': True})
         except Exception as e:
@@ -160,36 +167,8 @@ def spin_slot(request):
 
         # Track quest progress
         try:
-            user_quests = UserQuestProgress.objects.filter(
-                user=request.user,
-                completed=False
-            )
-            for quest_progress in user_quests:
-                quest = quest_progress.quest
-
-                # Track games played
-                if quest.objective_type == 'games_played':
-                    quest_progress.current_progress += 1
-                    if quest_progress.current_progress >= quest.objective_amount:
-                        quest_progress.completed = True
-                        battle_pass = request.user.battlepass
-                        battle_pass.xp += quest.reward_xp
-                        check_level_up(battle_pass)
-                        battle_pass.save()
-
-                # Track money won
-                elif quest.objective_type == 'money_won':
-                    if win > 0:
-                        quest_progress.current_progress += float(win)
-                        if quest_progress.current_progress >= quest.objective_amount:
-                            quest_progress.completed = True
-                            battle_pass = request.user.battlepass
-                            battle_pass.xp += quest.reward_xp
-                            check_level_up(battle_pass)
-                            battle_pass.save()
-
-                quest_progress.save()
-        except:
+            track_quest_progress(request, game='slots', won=(win > 0), win_amount=float(win))
+        except Exception:
             pass  # Quest tracking is not critical
 
         return JsonResponse({
@@ -203,6 +182,53 @@ def spin_slot(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+def track_quest_progress(request, game=None, won=False, win_amount=0):
+    """Update user quest progress for current game activity."""
+    try:
+        for quest in Quest.objects.all():
+            progress, _ = UserQuestProgress.objects.get_or_create(
+                user=request.user,
+                quest=quest,
+                defaults={'current_progress': 0, 'completed': False}
+            )
+
+            if progress.completed:
+                continue
+
+            increment = 0
+            if quest.objective_type == 'games_played' and game in ['blackjack', 'slots']:
+                increment = 1
+            elif quest.objective_type == 'blackjack_games' and game == 'blackjack':
+                increment = 1
+            elif quest.objective_type == 'slots_games' and game == 'slots':
+                increment = 1
+            elif quest.objective_type == 'games_won' and won:
+                increment = 1
+            elif quest.objective_type == 'blackjack_wins' and game == 'blackjack' and won:
+                increment = 1
+            elif quest.objective_type == 'slots_wins' and game == 'slots' and won:
+                increment = 1
+            elif quest.objective_type == 'money_won' and win_amount > 0:
+                increment = int(win_amount)
+
+            if increment <= 0:
+                continue
+
+            progress.current_progress += increment
+            if progress.current_progress >= quest.objective_amount:
+                progress.completed = True
+                progress.completed_at = timezone.now()
+                battle_pass = request.user.battlepass
+                battle_pass.xp += quest.reward_xp
+                battle_pass.total_xp += quest.reward_xp
+                check_level_up(battle_pass)
+                battle_pass.save()
+
+            progress.save()
+    except Exception as e:
+        print(f'Quest tracking error: {e}')
 
 
 def check_level_up(battle_pass):
