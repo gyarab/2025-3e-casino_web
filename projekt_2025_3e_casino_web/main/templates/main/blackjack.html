@@ -1,205 +1,573 @@
 {% extends 'main/base.html' %}
+{% load static %}
 
 {% block title %}Blackjack - Casino Web{% endblock %}
 
 {% block extra_head %}
 <style>
-        body {
-            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
+    body {
+        font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    .table {
+        background:
+            linear-gradient(180deg, rgba(0, 8, 18, 0.06), rgba(0, 8, 18, 0.2)),
+            url("{% static 'main/blackjack-table.png' %}") center center / cover no-repeat;
+        border-radius: 28px;
+        box-shadow: 0 24px 70px rgba(0,0,0,0.62), 0 0 38px rgba(56, 189, 248, 0.1);
+        padding: 38px 44px 54px 44px;
+        margin: 40px auto;
+        width: min(96vw, 980px);
+        max-width: 980px;
+        min-height: min(96vw, 980px);
+        aspect-ratio: 1 / 1;
+        position: relative;
+        border: 1px solid rgba(218, 164, 72, 0.34);
+        overflow: hidden;
+    }
+
+    .close-btn {
+        position: absolute;
+        top: 18px;
+        right: 24px;
+        font-size: 2.2em;
+        color: var(--close-btn-color, #a5f3ff);
+        background: none;
+        border: none;
+        cursor: pointer;
+        z-index: 10;
+        transition: color 0.2s ease;
+    }
+
+    .close-btn:hover { color: #38bdf8; }
+
+    .chips {
+        position: absolute;
+        top: 34px;
+        left: 36px;
+        z-index: 6;
+        display: grid;
+        grid-template-columns: repeat(2, 50px);
+        gap: 10px;
+        margin: 0;
+        width: 110px;
+    }
+
+    .chip {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        margin: 0;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+        transition: transform 0.15s ease, border 0.2s ease;
+        border: 3px solid transparent;
+    }
+
+    .chip.selected {
+        border: 3px solid var(--chip-selected-border, rgba(56, 189, 248, 0.9));
+        transform: scale(1.12);
+        box-shadow: 0 10px 28px rgba(56, 189, 248, 0.24);
+    }
+
+    .bet-clear {
+        grid-column: 1 / -1;
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: rgba(3, 18, 35, 0.78);
+        color: #d4f8ff;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    }
+
+    .bet-clear:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .bet-info {
+        position: absolute;
+        top: 154px;
+        left: 174px;
+        width: 170px;
+        text-align: left;
+        margin: 0;
+        font-size: 1.15rem;
+        color: var(--text-highlight, #d4f8ff);
+        font-weight: 900;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+        z-index: 6;
+    }
+
+    .section { margin-bottom: 32px; }
+
+    .section:first-of-type {
+        margin-top: 150px;
+    }
+
+    .cards {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+        min-height: 122px;
+        overflow: visible;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .bj-card-slot,
+    .bj-flip-slot {
+        width: 78px;
+        height: 112px;
+        perspective: 900px;
+        position: relative;
+        display: inline-block;
+        flex: 0 0 78px;
+        background: transparent !important;
+        background-color: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        outline: 0 !important;
+    }
+
+    .bj-card-face {
+        width: 78px;
+        height: 112px;
+        background:
+            radial-gradient(circle at 50% 42%, rgba(255,255,255,0.95), transparent 28%),
+            linear-gradient(145deg, #ffffff 0%, var(--card-bg, #e2faff) 74%);
+        border-radius: 12px;
+        box-shadow: 0 12px 26px rgba(0,0,0,0.26), inset 0 0 0 1px rgba(255,255,255,0.72);
+        display: block;
+        font-size: 1.5em;
+        color: var(--card-text, #03111f);
+        position: relative;
+        border: 2px solid var(--card-border, rgba(56, 189, 248, 0.45));
+        padding: 0;
+        backface-visibility: hidden;
+        overflow: hidden;
+        transform-style: preserve-3d;
+    }
+
+    .bj-card-face::before {
+        content: "";
+        position: absolute;
+        inset: 7px;
+        border: 1px solid rgba(3, 17, 31, 0.18);
+        border-radius: 8px;
+        pointer-events: none;
+    }
+
+    .bj-card-face.red { color: var(--card-red, #dc2626); }
+
+    .card-rank {
+        position: absolute;
+        left: 8px;
+        top: 7px;
+        display: grid;
+        line-height: 0.9;
+        text-align: center;
+        font-weight: 900;
+        font-size: 0.72em;
+    }
+
+    .card-rank.bottom {
+        left: auto;
+        top: auto;
+        right: 8px;
+        bottom: 7px;
+        transform: rotate(180deg);
+    }
+
+    .card-suit-small { font-size: 0.88em; }
+
+    .card-pip {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 2.1em;
+        font-weight: 900;
+        filter: drop-shadow(0 2px 1px rgba(0,0,0,0.14));
+    }
+
+    .bj-card-face.back {
+        background:
+            radial-gradient(circle at center, rgba(255,255,255,0.12) 0 18%, transparent 19%),
+            repeating-linear-gradient(135deg, var(--card-back-start, #04111d), var(--card-back-start, #04111d) 8px, var(--card-back-end, #0a2d47) 8px, var(--card-back-end, #0a2d47) 16px);
+        border: 2px solid var(--card-border, rgba(56, 189, 248, 0.35));
+    }
+
+    .bj-card-face.back::after {
+        content: "";
+        position: absolute;
+        inset: 14px;
+        border-radius: 8px;
+        border: 2px solid rgba(255,255,255,0.28);
+        box-shadow: inset 0 0 18px rgba(255,255,255,0.12);
+    }
+
+    .deal-fly {
+        animation: dealFly 0.62s cubic-bezier(.18,.9,.24,1.12) both;
+    }
+
+    @keyframes dealFly {
+        0% { opacity: 0; transform: translate3d(0, -150px, 0) scale(0.35) rotateZ(-14deg) rotateY(72deg); }
+        58% { opacity: 1; transform: translate3d(0, 9px, 0) scale(1.08) rotateZ(4deg) rotateY(-8deg); }
+        78% { transform: translate3d(0, -3px, 0) scale(1.02) rotateZ(-1deg) rotateY(0deg); }
+        100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotateZ(0deg) rotateY(0deg); }
+    }
+
+    .flipper {
+        width: 78px;
+        height: 112px;
+        transform-style: preserve-3d;
+        position: relative;
+        background: transparent !important;
+    }
+
+    .bj-flip-slot.flipped .flipper {
+        animation: flipDealerCard 0.72s cubic-bezier(.2,.85,.25,1.15) forwards;
+    }
+
+    @keyframes flipDealerCard {
+        0% { transform: rotateY(0deg); }
+        48% { transform: rotateY(92deg) scale(1.08); }
+        100% { transform: rotateY(180deg); }
+    }
+
+    .flip-front,
+    .flip-back {
+        position: absolute;
+        width: 78px;
+        height: 112px;
+        top: 0;
+        left: 0;
+        backface-visibility: hidden;
+        background: transparent !important;
+        background-color: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .flip-back { transform: rotateY(180deg); }
+
+    .score {
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+        color: #d4f8ff;
+        font-weight: 700;
+        text-align: center;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+    }
+
+    .btns {
+        display: flex;
+        justify-content: center;
+        gap: 18px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .btn-bj {
+        background: linear-gradient(135deg, var(--btn-base-start, #38bdf8), var(--btn-base-end, #0ea5e9));
+        color: var(--btn-text, #03111f);
+        border: none;
+        border-radius: 14px;
+        padding: 14px 34px;
+        font-size: 1.05rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 10px 22px rgba(14, 165, 233, 0.18);
+    }
+
+    #btn-deal { background: linear-gradient(135deg, var(--btn-deal-start, #22c55e), var(--btn-deal-end, #0ea5e9)); }
+    #btn-hit { background: linear-gradient(135deg, var(--btn-hit-start, #38bdf8), var(--btn-hit-end, #0284c7)); }
+    #btn-stand { background: linear-gradient(135deg, var(--btn-stand-start, #7c3aed), var(--btn-stand-end, #38bdf8)); }
+    #btn-double { background: linear-gradient(135deg, var(--btn-double-start, #0ea5e9), var(--btn-double-end, #06b6d4)); }
+    #btn-split, #split-hit-0, #split-hit-1 { background: linear-gradient(135deg, var(--btn-split-start, #0284c7), var(--btn-split-end, #38bdf8)); color: var(--btn-split-text, #ffffff); }
+    #split-stand-0, #split-stand-1 { background: linear-gradient(135deg, var(--btn-split-stand-start, #1d4ed8), var(--btn-split-stand-end, #38bdf8)); }
+    #split-double-0, #split-double-1 { background: linear-gradient(135deg, var(--btn-split-double-start, #0ea5e9), var(--btn-split-double-end, #38bdf8)); }
+
+    .btn-bj:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+
+    .btn-bj:hover:enabled {
+        transform: scale(1.05);
+        box-shadow: 0 14px 28px rgba(14, 165, 233, 0.22);
+    }
+
+    .message {
+        text-align: center;
+        font-size: 1.3rem;
+        font-weight: 800;
+        margin-top: 20px;
+        min-height: 32px;
+        color: var(--text-highlight, #c6f7ff);
+        text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+    }
+
+    .message.win-message {
+        color: #fff7a8;
+        text-shadow: 0 0 18px rgba(250, 204, 21, 0.72), 0 0 34px rgba(34, 197, 94, 0.35);
+        animation: messagePop 0.7s cubic-bezier(.2,.9,.2,1.2);
+    }
+
+    @keyframes messagePop {
+        0% { opacity: 0; transform: scale(0.76); }
+        70% { opacity: 1; transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    .win-burst {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 9;
+        overflow: hidden;
+    }
+
+    .win-burst.active { animation: winBurstFade 1.6s ease both; }
+
+    .win-burst::before {
+        content: "";
+        position: absolute;
+        width: min(520px, 82vw);
+        aspect-ratio: 1;
+        border-radius: 999px;
+        background:
+            conic-gradient(from 0deg, transparent 0 10deg, rgba(250,204,21,0.9) 11deg 18deg, transparent 19deg 34deg, rgba(34,197,94,0.7) 35deg 44deg, transparent 45deg 60deg),
+            radial-gradient(circle, rgba(255,255,255,0.22), transparent 55%);
+        filter: blur(0.2px);
+        animation: prizeSpin 1.6s ease-out both;
+    }
+
+    .win-burst-text {
+        position: relative;
+        padding: 18px 34px;
+        border-radius: 18px;
+        border: 1px solid rgba(250, 204, 21, 0.55);
+        background: linear-gradient(135deg, rgba(20, 83, 45, 0.94), rgba(113, 63, 18, 0.94));
+        color: #fff7a8;
+        font-size: clamp(2rem, 6vw, 4.7rem);
+        font-weight: 950;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        box-shadow: 0 26px 70px rgba(0,0,0,0.45), 0 0 46px rgba(250,204,21,0.34);
+        text-shadow: 0 3px 0 rgba(0,0,0,0.28), 0 0 20px rgba(255,255,255,0.35);
+        animation: prizeText 1.35s cubic-bezier(.2,.9,.2,1.18) both;
+    }
+
+    @keyframes winBurstFade {
+        0% { opacity: 0; }
+        14% { opacity: 1; }
+        78% { opacity: 1; }
+        100% { opacity: 0; }
+    }
+
+    @keyframes prizeSpin {
+        0% { transform: scale(0.35) rotate(0deg); opacity: 0; }
+        35% { opacity: 1; }
+        100% { transform: scale(1.35) rotate(145deg); opacity: 0; }
+    }
+
+    @keyframes prizeText {
+        0% { opacity: 0; transform: translateY(18px) scale(0.62) rotate(-4deg); }
+        60% { opacity: 1; transform: translateY(0) scale(1.08) rotate(2deg); }
+        100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+    }
+
+    .dealer-label,
+    .player-label {
+        text-align: center;
+        font-weight: 800;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+        color: var(--text-highlight, #c6f7ff);
+        text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+    }
+
+    .balance-info {
+        text-align: center;
+        color: var(--text-highlight, #d4f8ff);
+        font-size: 1.15rem;
+        margin-bottom: 8px;
+        font-weight: 800;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    }
+
+    .split-hands {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: center;
+        gap: 18px;
+        width: 100%;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .split-hand {
+        position: relative;
+        overflow: hidden;
+        background: rgba(3, 18, 35, 0.52) !important;
+        background-color: rgba(3, 18, 35, 0.52) !important;
+        border: 1px solid rgba(56, 189, 248, 0.2) !important;
+        box-shadow: 0 16px 34px rgba(0,0,0,0.2) !important;
+        border-radius: 16px !important;
+        padding: 12px 10px 14px !important;
+        min-width: 0;
+        max-width: 100%;
+        color: #d4f8ff !important;
+    }
+
+    .split-hand .cards {
+        min-height: 112px;
+        gap: 10px;
+        margin-bottom: 6px;
+    }
+
+    .split-hand .btns {
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .split-hand .btn-bj {
+        flex: 1 1 86px;
+        min-width: 0;
+        padding: 10px 8px;
+        font-size: 0.88rem;
+        border-radius: 12px;
+    }
+
+    .split-hand .score {
+        margin-bottom: 4px;
+        font-size: 0.98rem;
+    }
+
+    .split-hand .message {
+        margin-top: 10px;
+        font-size: 1.05rem;
+        min-height: 26px;
+    }
+
+    .split-hand-label {
+        text-align: center;
+        color: var(--text-highlight, #d4f8ff);
+        font-weight: 800;
+        margin-bottom: 4px;
+        font-size: 0.95rem;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+    }
+
+    .split-win-burst {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 5;
+        overflow: hidden;
+    }
+
+    .split-win-burst.active {
+        animation: winBurstFade 1.45s ease both;
+    }
+
+    .split-win-burst::before {
+        content: "";
+        position: absolute;
+        width: 260px;
+        aspect-ratio: 1;
+        border-radius: 999px;
+        background:
+            conic-gradient(from 0deg, transparent 0 10deg, rgba(250,204,21,0.9) 11deg 18deg, transparent 19deg 34deg, rgba(34,197,94,0.72) 35deg 44deg, transparent 45deg 60deg),
+            radial-gradient(circle, rgba(255,255,255,0.18), transparent 58%);
+        animation: prizeSpin 1.45s ease-out both;
+    }
+
+    .split-win-burst-text {
+        position: relative;
+        padding: 10px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(250, 204, 21, 0.58);
+        background: linear-gradient(135deg, rgba(20, 83, 45, 0.96), rgba(113, 63, 18, 0.96));
+        color: #fff7a8;
+        font-size: 1.35rem;
+        font-weight: 950;
+        text-transform: uppercase;
+        box-shadow: 0 18px 44px rgba(0,0,0,0.42), 0 0 32px rgba(250,204,21,0.34);
+        text-shadow: 0 3px 0 rgba(0,0,0,0.28), 0 0 18px rgba(255,255,255,0.35);
+        animation: prizeText 1.2s cubic-bezier(.2,.9,.2,1.18) both;
+    }
+
+    .split-active {
+        box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.35), 0 16px 34px rgba(0,0,0,0.2) !important;
+        border-radius: 16px;
+    }
+
+    @media (max-width: 760px) {
+        .split-hands {
+            grid-template-columns: 1fr;
+            gap: 14px;
         }
-        .table {
-            background: var(--table-bg, rgba(3, 18, 35, 0.95));
-            border-radius: 32px;
-            box-shadow: var(--table-shadow, 0 18px 48px rgba(0,0,0,0.45), 0 0 30px rgba(56, 189, 248, 0.12));
-            padding: 40px 34px 34px 34px;
-            margin: 40px auto;
-            max-width: 940px;
-            min-height: 640px;
-            position: relative;
-            border: 1px solid var(--table-border, rgba(56, 189, 248, 0.22));
-        }
-        .close-btn {
-            position: absolute;
-            top: 18px;
-            right: 24px;
-            font-size: 2.2em;
-            color: var(--close-btn-color, #a5f3ff);
-            background: none;
-            border: none;
-            cursor: pointer;
-            z-index: 10;
-            transition: color 0.2s ease;
-        }
-        .close-btn:hover { color: #38bdf8; }
-        .chips {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-        .chip {
-            display: inline-block;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            margin: 0 10px;
-            cursor: pointer;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-            transition: transform 0.15s ease, border 0.2s ease;
-            border: 3px solid transparent;
-        }
-        .chip.selected {
-            border: 3px solid var(--chip-selected-border, rgba(56, 189, 248, 0.9));
-            transform: scale(1.12);
-            box-shadow: 0 10px 28px rgba(56, 189, 248, 0.24);
-        }
-        .bet-info {
-            text-align: center;
-            margin-bottom: 18px;
-            font-size: 1.25rem;
-            color: var(--text-highlight, #d4f8ff);
-            font-weight: 700;
-        }
-        .section { margin-bottom: 32px; }
-        .cards {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            margin-bottom: 10px;
-            min-height: 110px;
-        }
-        .card-container { perspective: 800px; position: relative; }
-        .card {
-            width: 72px;
-            height: 102px;
-            background: var(--card-bg, #e2faff);
-            border-radius: 14px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.18);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 1.7em;
-            color: var(--card-text, #03111f);
-            position: relative;
-            border: 2px solid var(--card-border, rgba(56, 189, 248, 0.45));
-            transition: transform 0.2s ease;
-            padding: 8px 0;
-            backface-visibility: hidden;
-        }
-        .card.red { color: var(--card-text, #0f172a); }
-        .card.back {
-            background: repeating-linear-gradient(135deg, var(--card-back-start, #04111d), var(--card-back-start, #04111d) 10px, var(--card-back-end, #0a2d47) 10px, var(--card-back-end, #0a2d47) 20px);
-            border: 2px solid var(--card-border, rgba(56, 189, 248, 0.35));
-        }
-        .deal-fly { animation: dealFly 0.5s cubic-bezier(.4,2,.6,1) forwards; }
-        @keyframes dealFly {
-            0% { opacity: 0; transform: translateY(-120px) scale(0.2) rotateY(90deg); }
-            60% { opacity: 1; transform: translateY(10px) scale(1.1) rotateY(-10deg); }
-            80% { transform: translateY(0px) scale(1.05) rotateY(0deg); }
-            100% { opacity: 1; transform: translateY(0) scale(1) rotateY(0deg); }
-        }
-        .flip-container { perspective: 800px; display: inline-block; position: relative; }
-        .flipper { transition: transform 0.6s cubic-bezier(.4,2,.6,1); transform-style: preserve-3d; position: relative; }
-        .flipped .flipper { transform: rotateY(180deg); animation: flipAnimation 0.6s cubic-bezier(.4,2,.6,1) forwards; }
-        @keyframes flipAnimation {
-            0% { transform: rotateY(0deg); }
-            50% { transform: rotateY(90deg) scale(1.05); }
-            100% { transform: rotateY(180deg) translateX(80px); }
-        }
-        .revealed { animation: revealAnim 0.5s ease-out 0.6s both; }
-        @keyframes revealAnim { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
-        .flip-front, .flip-back { position: absolute; width: 72px; height: 102px; top: 0; left: 0; backface-visibility: hidden; }
-        .flip-back { transform: rotateY(180deg); }
-        .score {
-            font-size: 1.1rem;
-            margin-bottom: 10px;
-            color: #d4f8ff;
-            font-weight: 700;
-            text-align: center;
-        }
-        .btns {
-            display: flex;
-            justify-content: center;
-            gap: 18px;
-            margin-top: 24px;
-        }
-        .btn-bj {
-            background: linear-gradient(135deg, var(--btn-base-start, #38bdf8), var(--btn-base-end, #0ea5e9));
-            color: var(--btn-text, #03111f);
-            border: none;
-            border-radius: 14px;
-            padding: 14px 34px;
-            font-size: 1.05rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 10px 22px rgba(14, 165, 233, 0.18);
-        }
-        #btn-deal { background: linear-gradient(135deg, var(--btn-deal-start, #22c55e), var(--btn-deal-end, #0ea5e9)); }
-        #btn-hit { background: linear-gradient(135deg, var(--btn-hit-start, #38bdf8), var(--btn-hit-end, #0284c7)); }
-        #btn-stand { background: linear-gradient(135deg, var(--btn-stand-start, #7c3aed), var(--btn-stand-end, #38bdf8)); }
-        #btn-double { background: linear-gradient(135deg, var(--btn-double-start, #0ea5e9), var(--btn-double-end, #06b6d4)); }
-        #btn-split, #split-hit-0, #split-hit-1 { background: linear-gradient(135deg, var(--btn-split-start, #0284c7), var(--btn-split-end, #38bdf8)); color: var(--btn-split-text, #ffffff); }
-        #split-stand-0, #split-stand-1 { background: linear-gradient(135deg, var(--btn-split-stand-start, #1d4ed8), var(--btn-split-stand-end, #38bdf8)); }
-        #split-double-0, #split-double-1 { background: linear-gradient(135deg, var(--btn-split-double-start, #0ea5e9), var(--btn-split-double-end, #38bdf8)); }
-        .btn-bj:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
-        .btn-bj:hover:enabled { transform: scale(1.05); box-shadow: 0 14px 28px rgba(14, 165, 233, 0.22); }
-        .message {
-            text-align: center;
-            font-size: 1.3rem;
-            font-weight: 800;
-            margin-top: 20px;
-            min-height: 32px;
-            color: var(--text-highlight, #c6f7ff);
-        }
-        .dealer-label, .player-label {
-            text-align: center;
-            font-weight: 800;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-            color: var(--text-highlight, #c6f7ff);
-        }
-        .balance-info {
-            text-align: center;
-            color: var(--text-highlight, #d4f8ff);
-            font-size: 1.15rem;
-            margin-bottom: 14px;
-            font-weight: 800;
-        }
-        .split-hands { display: flex; justify-content: center; gap: 40px; }
-        .split-hand-label {
-            text-align: center;
-            color: var(--text-highlight, #d4f8ff);
-            font-weight: 800;
-            margin-bottom: 6px;
-        }
-        .split-active { box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.35); border-radius: 16px; }
-    </style>
+    }
+</style>
 {% endblock %}
 
 {% block content %}
     {% csrf_token %}
     <div class="table">
         <button class="close-btn" onclick="window.location.href='/'" title="Zpět na hlavní stránku">&times;</button>
+
         <div class="balance-info" id="balance-info">Zůstatek: {{ balance }}</div>
+
         <div class="chips">
-            <img class="chip" src="/static/main/chip10.png" onclick="setBet(10)" alt="10">
-            <img class="chip" src="/static/main/chip50.png" onclick="setBet(50)" alt="50">
-            <img class="chip" src="/static/main/chip100.png" onclick="setBet(100)" alt="100">
-            <img class="chip" src="/static/main/chip500.png" onclick="setBet(500)" alt="500">
+            <img class="chip" src="/static/main/chip10.png" onclick="setBet(10)" data-chip="10" alt="10">
+            <img class="chip" src="/static/main/chip50.png" onclick="setBet(50)" data-chip="50" alt="50">
+            <img class="chip" src="/static/main/chip100.png" onclick="setBet(100)" data-chip="100" alt="100">
+            <img class="chip" src="/static/main/chip500.png" onclick="setBet(500)" data-chip="500" alt="500">
+            <button class="bet-clear" id="btn-clear-bet" type="button" onclick="clearBet()">Zrušit vklad</button>
         </div>
-        <div class="bet-info" id="bet-info">Sázka: 10</div>
+
+        <div class="bet-info" id="bet-info">Sázka: 0</div>
+
         <div class="section">
             <div class="dealer-label">DEALER</div>
             <div class="cards" id="dealer-cards"></div>
             <div class="score" id="dealer-score"></div>
         </div>
+
         <div class="section" id="player-section">
             <div class="player-label">HRÁČ</div>
             <div class="cards" id="player-cards"></div>
             <div class="score" id="player-score"></div>
         </div>
+
         <div class="section" id="split-section" style="display:none;">
             <div class="split-hands">
                 <div id="split-hand-0" class="split-hand">
@@ -212,7 +580,11 @@
                         <button class="btn-bj" onclick="splitDouble(0)" id="split-double-0">Double</button>
                     </div>
                     <div class="message" id="split-msg-0"></div>
+                    <div class="split-win-burst" id="split-win-burst-0" aria-hidden="true">
+                        <div class="split-win-burst-text">Výhra!</div>
+                    </div>
                 </div>
+
                 <div id="split-hand-1" class="split-hand">
                     <div class="split-hand-label">PRAVÁ RUKA</div>
                     <div class="cards" id="split-cards-1"></div>
@@ -223,598 +595,731 @@
                         <button class="btn-bj" onclick="splitDouble(1)" id="split-double-1">Double</button>
                     </div>
                     <div class="message" id="split-msg-1"></div>
+                    <div class="split-win-burst" id="split-win-burst-1" aria-hidden="true">
+                        <div class="split-win-burst-text">Výhra!</div>
+                    </div>
                 </div>
             </div>
         </div>
+
         <div class="btns" id="main-btns">
-            <button class="btn-bj" onclick="deal()" id="btn-deal">Rozdat</button>
+            <button class="btn-bj" onclick="deal()" id="btn-deal" disabled>Rozdat</button>
             <button class="btn-bj" onclick="hit()" id="btn-hit" disabled>Přidat kartu</button>
             <button class="btn-bj" onclick="stand()" id="btn-stand" disabled>Zůstat</button>
             <button class="btn-bj" onclick="doubleDown()" id="btn-double" disabled>Double</button>
             <button class="btn-bj" onclick="split()" id="btn-split" style="display:none;">Split</button>
         </div>
+
         <div class="message" id="message"></div>
+
+        <div class="win-burst" id="win-burst" aria-hidden="true">
+            <div class="win-burst-text" id="win-burst-text">Výhra!</div>
+        </div>
     </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-        let deck;
-        let player;
-        let dealer;
-        let gameOver;
-        let message;
-        let bet = 10;
-        let balance = {{ balance }};
-        let canBet = true;
-        let dealerHidden = true;
-        let started = false;
+    let deck;
+    let player;
+    let dealer;
+    let gameOver;
+    let message = "";
+    let bet = 0;
+    let balance = {{ balance }};
+    let canBet = true;
+    let dealerHidden = true;
+    let started = false;
 
-        let playerAnim = [];
-        let dealerAnim = [];
+    let playerAnim = [];
+    let dealerAnim = [];
+    let splitAnim = [[], []];
 
-        let dealerFlip = false;
-        let dealerRevealPending = false;
+    let dealerFlipping = false;
+    let dealerRevealed = false;
+    let dealerTurnInProgress = false;
 
-        let splitMode = false;
-        let splitHands = [[], []];
-        let splitAnim = [[], []];
-        let splitActive = 0;
-        let splitDone = [false, false];
-        let splitMsg = ["", ""];
-        let splitDoubleUsed = [false, false];
+    let splitMode = false;
+    let splitHands = [[], []];
+    let splitActive = 0;
+    let splitDone = [false, false];
+    let splitMsg = ["", ""];
+    let splitDoubleUsed = [false, false];
 
-        let doubleUsed = false;
-        let roundStartBalance = 0;
+    let doubleUsed = false;
+    let roundStartBalance = 0;
+    let winAnimationTimer = null;
+    let splitWinAnimationTimers = [null, null];
 
-        const DEAL_ANIMATION_MS = 500;
+    const DEAL_ANIMATION_MS = 620;
+    const FLIP_ANIMATION_MS = 720;
 
-        function createDeck() {
-            const suits = ['♠', '♥', '♦', '♣'];
-            const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-            let deck = [];
+    function createDeck() {
+        const suits = ['♠', '♥', '♦', '♣'];
+        const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        let newDeck = [];
 
-            for (let suit of suits) {
-                for (let value of values) {
-                    deck.push({suit, value});
-                }
-            }
-
-            return deck.sort(() => Math.random() - 0.5);
-        }
-
-        function getValue(cards, hideFirst = false) {
-            let value = 0;
-            let aces = 0;
-            let start = hideFirst ? 1 : 0;
-
-            for (let i = start; i < cards.length; i++) {
-                let card = cards[i];
-
-                if (card.value === 'A') {
-                    value += 11;
-                    aces++;
-                } else if (['K', 'Q', 'J'].includes(card.value)) {
-                    value += 10;
-                } else {
-                    value += parseInt(card.value);
-                }
-            }
-
-            while (value > 21 && aces) {
-                value -= 10;
-                aces--;
-            }
-
-            return value;
-        }
-
-        function isBlackjack(cards) {
-            return cards.length === 2 && getValue(cards) === 21;
-        }
-
-        function setBet(amount) {
-            if (!canBet) return;
-
-            bet = amount;
-            document.getElementById('bet-info').innerText = "Sázka: " + bet;
-
-            let chips = document.querySelectorAll('.chip');
-            chips.forEach(chip => chip.classList.remove('selected'));
-
-            let selectedIndex = [10, 50, 100, 500].indexOf(amount);
-            if (selectedIndex !== -1) {
-                chips[selectedIndex].classList.add('selected');
+        for (let suit of suits) {
+            for (let value of values) {
+                newDeck.push({suit, value});
             }
         }
 
-        function canSplit(cards) {
-            if (cards.length !== 2) return false;
+        return newDeck.sort(() => Math.random() - 0.5);
+    }
 
-            const values = {
-                'J': 10,
-                'Q': 10,
-                'K': 10,
-                'A': 11
-            };
+    function getValue(cards, hideFirst = false) {
+        let value = 0;
+        let aces = 0;
+        let start = hideFirst ? 1 : 0;
 
-            let v1 = values[cards[0].value] || parseInt(cards[0].value);
-            let v2 = values[cards[1].value] || parseInt(cards[1].value);
+        for (let i = start; i < cards.length; i++) {
+            let card = cards[i];
 
-            return v1 === v2;
+            if (card.value === 'A') {
+                value += 11;
+                aces++;
+            } else if (['K', 'Q', 'J'].includes(card.value)) {
+                value += 10;
+            } else {
+                value += parseInt(card.value);
+            }
         }
 
-        function deal() {
-            if (balance < bet) {
-                message = "Nedostatek prostředků!";
-                render();
-                return;
-            }
+        while (value > 21 && aces) {
+            value -= 10;
+            aces--;
+        }
 
-            roundStartBalance = balance;
-            balance -= bet;
+        return value;
+    }
 
-            splitMode = false;
-            document.getElementById('split-section').style.display = "none";
-            document.getElementById('player-section').style.display = "";
-            document.getElementById('btn-split').style.display = "none";
+    function isBlackjack(cards) {
+        return cards.length === 2 && getValue(cards) === 21;
+    }
 
-            doubleUsed = false;
-            splitDoubleUsed = [false, false];
+    function isRedSuit(suit) {
+        return suit === '♥' || suit === '♦';
+    }
 
-            deck = createDeck();
-            player = [];
-            dealer = [];
+    function cardFaceHtml(card) {
+        const redClass = isRedSuit(card.suit) ? ' red' : '';
 
-            playerAnim = [];
-            dealerAnim = [];
+        return `
+            <span class="bj-card-face${redClass}">
+                <span class="card-rank">
+                    <span>${card.value}</span>
+                    <span class="card-suit-small">${card.suit}</span>
+                </span>
+                <span class="card-pip">${card.suit}</span>
+                <span class="card-rank bottom">
+                    <span>${card.value}</span>
+                    <span class="card-suit-small">${card.suit}</span>
+                </span>
+            </span>
+        `;
+    }
 
-            dealerFlip = false;
-            dealerRevealPending = false;
+    function playWinAnimation(text = 'Výhra!') {
+        const burst = document.getElementById('win-burst');
+        const burstText = document.getElementById('win-burst-text');
 
-            gameOver = false;
-            message = "";
+        if (!burst || !burstText) return;
 
-            dealerHidden = true;
-            canBet = false;
-            started = true;
+        clearTimeout(winAnimationTimer);
+        burstText.innerText = text;
+        burst.classList.remove('active');
+        void burst.offsetWidth;
+        burst.classList.add('active');
 
-            document.getElementById('btn-hit').disabled = true;
-            document.getElementById('btn-stand').disabled = true;
-            document.getElementById('btn-double').disabled = true;
-            document.getElementById('btn-deal').disabled = true;
+        winAnimationTimer = setTimeout(() => {
+            burst.classList.remove('active');
+        }, 1700);
+    }
 
+    function playSplitWinAnimation(hand) {
+        const burst = document.getElementById('split-win-burst-' + hand);
+        if (!burst) return;
+
+        clearTimeout(splitWinAnimationTimers[hand]);
+        burst.classList.remove('active');
+        void burst.offsetWidth;
+        burst.classList.add('active');
+
+        splitWinAnimationTimers[hand] = setTimeout(() => {
+            burst.classList.remove('active');
+        }, 1500);
+    }
+
+    function updateBetControls() {
+        document.getElementById('bet-info').innerText = "Sázka: " + bet;
+
+        const dealBtn = document.getElementById('btn-deal');
+        const clearBtn = document.getElementById('btn-clear-bet');
+
+        if (dealBtn && canBet) {
+            dealBtn.disabled = bet <= 0 || balance < bet;
+        }
+
+        if (clearBtn) {
+            clearBtn.disabled = !canBet || bet <= 0;
+        }
+    }
+
+    function flashChip(amount) {
+        const chip = document.querySelector(`[data-chip="${amount}"]`);
+        if (!chip) return;
+
+        chip.classList.add('selected');
+
+        setTimeout(() => {
+            chip.classList.remove('selected');
+        }, 180);
+    }
+
+    function setBet(amount) {
+        if (!canBet) return;
+
+        if (bet + amount > balance) {
+            message = "Nemáš dostatek žetonů pro tuhle sázku.";
             render();
-
-            setTimeout(() => {
-                addCard('player');
-            }, 200);
-
-            setTimeout(() => {
-                addCard('dealer');
-            }, 700);
-
-            setTimeout(() => {
-                addCard('player');
-            }, 1200);
-
-            setTimeout(() => {
-                addCard('dealer');
-                afterDealOptions();
-            }, 1700);
+            return;
         }
 
-        function afterDealOptions() {
-            document.getElementById('btn-hit').disabled = false;
-            document.getElementById('btn-stand').disabled = false;
-            document.getElementById('btn-double').disabled = false;
+        bet += amount;
+        message = "";
+        flashChip(amount);
+        render();
+    }
 
-            if (canSplit(player) && balance >= bet) {
-                document.getElementById('btn-split').style.display = "";
-            }
+    function clearBet() {
+        if (!canBet) return;
 
-            if (player.length === 2 && balance >= bet) {
-                document.getElementById('btn-double').disabled = false;
-            }
+        bet = 0;
+        message = "";
+        render();
+    }
 
-            if (isBlackjack(player)) {
-                revealDealerCard();
+    function canSplit(cards) {
+        if (cards.length !== 2) return false;
 
-                setTimeout(() => {
-                    dealerRevealPending = false;
-                    render();
+        const values = {
+            'J': 10,
+            'Q': 10,
+            'K': 10,
+            'A': 11
+        };
 
-                    if (isBlackjack(dealer)) {
-                        message = "Remíza! Oba máte blackjack.";
-                        balance += bet;
-                    } else {
-                        message = "Blackjack! Výhra 3:2";
-                        balance += Math.floor(bet * 2.5);
-                    }
+        let v1 = values[cards[0].value] || parseInt(cards[0].value);
+        let v2 = values[cards[1].value] || parseInt(cards[1].value);
 
-                    gameOver = true;
+        return v1 === v2;
+    }
+
+    function dealCardTo(target, handIndex = null) {
+        const card = deck.pop();
+
+        if (target === 'player') {
+            player.push(card);
+            playerAnim = player.map(() => false);
+            playerAnim[player.length - 1] = true;
+        }
+
+        if (target === 'dealer') {
+            dealer.push(card);
+            dealerAnim = dealer.map(() => false);
+            dealerAnim[dealer.length - 1] = true;
+        }
+
+        if (target === 'split') {
+            splitHands[handIndex].push(card);
+            splitAnim[handIndex] = splitHands[handIndex].map(() => false);
+            splitAnim[handIndex][splitHands[handIndex].length - 1] = true;
+        }
+
+        render();
+    }
+
+    function deal() {
+        if (bet <= 0) {
+            message = "Nejdřív si vyber sázku.";
+            render();
+            return;
+        }
+
+        if (balance < bet) {
+            message = "Nedostatek prostředků!";
+            render();
+            return;
+        }
+
+        roundStartBalance = balance;
+        balance -= bet;
+
+        splitMode = false;
+        document.getElementById('split-section').style.display = "none";
+        document.getElementById('player-section').style.display = "";
+        document.getElementById('btn-split').style.display = "none";
+
+        doubleUsed = false;
+        splitDoubleUsed = [false, false];
+
+        splitWinAnimationTimers.forEach(timer => clearTimeout(timer));
+        splitWinAnimationTimers = [null, null];
+
+        deck = createDeck();
+        player = [];
+        dealer = [];
+
+        playerAnim = [];
+        dealerAnim = [];
+        splitAnim = [[], []];
+
+        dealerHidden = true;
+        dealerFlipping = false;
+        dealerRevealed = false;
+        dealerTurnInProgress = false;
+
+        gameOver = false;
+        message = "";
+
+        canBet = false;
+        started = true;
+
+        document.getElementById('btn-hit').disabled = true;
+        document.getElementById('btn-stand').disabled = true;
+        document.getElementById('btn-double').disabled = true;
+        document.getElementById('btn-deal').disabled = true;
+
+        updateBetControls();
+        render();
+
+        setTimeout(() => dealCardTo('player'), 200);
+        setTimeout(() => dealCardTo('dealer'), 700);
+        setTimeout(() => dealCardTo('player'), 1200);
+        setTimeout(() => {
+            dealCardTo('dealer');
+            afterDealOptions();
+        }, 1700);
+    }
+
+    function afterDealOptions() {
+        document.getElementById('btn-hit').disabled = false;
+        document.getElementById('btn-stand').disabled = false;
+        document.getElementById('btn-double').disabled = balance < bet;
+
+        if (canSplit(player) && balance >= bet) {
+            document.getElementById('btn-split').style.display = "";
+        }
+
+        if (isBlackjack(player)) {
+            revealDealerThen(() => {
+                if (isBlackjack(dealer)) {
+                    message = "Remíza! Oba máte blackjack.";
+                    balance += bet;
+                } else {
+                    message = "Blackjack! Výhra 3:2";
+                    balance += Math.floor(bet * 2.5);
+                    playWinAnimation('Blackjack!');
+                }
+
+                gameOver = true;
+                endGame();
+                render();
+            });
+        }
+    }
+
+    function revealDealerThen(callback) {
+        if (dealerRevealed) {
+            callback();
+            return;
+        }
+
+        dealerHidden = false;
+        dealerFlipping = true;
+        render();
+
+        setTimeout(() => {
+            dealerFlipping = false;
+            dealerRevealed = true;
+            render();
+            callback();
+        }, FLIP_ANIMATION_MS);
+    }
+
+    function hit() {
+        if (gameOver || canBet || splitMode || dealerTurnInProgress) return;
+
+        dealCardTo('player');
+
+        setTimeout(() => {
+            if (getValue(player) > 21) {
+                message = "Přesáhl jsi 21! Prohrál jsi.";
+                gameOver = true;
+
+                revealDealerThen(() => {
                     endGame();
                     render();
-                }, 800);
-            }
-        }
-
-        function clearCardAnimation(animArray, index) {
-            setTimeout(() => {
-                animArray[index] = false;
-                render();
-            }, DEAL_ANIMATION_MS);
-        }
-
-        function addCard(who) {
-            if (who === 'player') {
-                player.push(deck.pop());
-                playerAnim = Array(player.length).fill(false);
-                playerAnim[player.length - 1] = true;
-                render();
-                clearCardAnimation(playerAnim, player.length - 1);
-            } else {
-                dealer.push(deck.pop());
-                dealerAnim = Array(dealer.length).fill(false);
-                dealerAnim[dealer.length - 1] = true;
-                render();
-                clearCardAnimation(dealerAnim, dealer.length - 1);
-            }
-        }
-
-        function addSplitCard(hand) {
-            splitHands[hand].push(deck.pop());
-            splitAnim[hand] = Array(splitHands[hand].length).fill(false);
-            splitAnim[hand][splitHands[hand].length - 1] = true;
-            render();
-            clearCardAnimation(splitAnim[hand], splitHands[hand].length - 1);
-        }
-
-        function revealDealerCard() {
-            dealerRevealPending = true;
-            dealerHidden = false;
-            dealerFlip = true;
-            render();
-        }
-
-        function hit() {
-            if (gameOver || canBet || splitMode) return;
-
-            addCard('player');
-
-            if (getValue(player) > 21) {
-                setTimeout(() => {
-                    message = "Přesáhl jsi 21! Prohrál jsi.";
-                    gameOver = true;
-
-                    revealDealerCard();
-
-                    setTimeout(() => {
-                        dealerRevealPending = false;
-                        render();
-                        endGame();
-                        render();
-                    }, 600);
-                }, DEAL_ANIMATION_MS);
+                });
             } else if (getValue(player) === 21) {
-                setTimeout(() => {
-                    stand();
-                }, DEAL_ANIMATION_MS + 200);
+                stand();
             }
-        }
+        }, DEAL_ANIMATION_MS);
+    }
 
-        function stand() {
-            if (gameOver || canBet || splitMode) return;
+    function stand() {
+        if (gameOver || canBet || splitMode || dealerTurnInProgress) return;
 
-            revealDealerCard();
+        document.getElementById('btn-hit').disabled = true;
+        document.getElementById('btn-stand').disabled = true;
+        document.getElementById('btn-double').disabled = true;
+        document.getElementById('btn-split').style.display = "none";
 
+        dealerTurnInProgress = true;
+
+        revealDealerThen(() => {
             setTimeout(() => {
-                dealerRevealPending = false;
-                render();
                 dealerDraw();
-            }, 600);
-        }
+            }, 180);
+        });
+    }
 
-        function doubleDown() {
-            if (gameOver || canBet || splitMode || doubleUsed || balance < bet) return;
+    function doubleDown() {
+        if (gameOver || canBet || splitMode || doubleUsed || balance < bet || dealerTurnInProgress) return;
 
-            doubleUsed = true;
-            balance -= bet;
-            bet *= 2;
+        doubleUsed = true;
+        balance -= bet;
+        bet *= 2;
 
-            document.getElementById('btn-double').disabled = true;
+        document.getElementById('btn-hit').disabled = true;
+        document.getElementById('btn-stand').disabled = true;
+        document.getElementById('btn-double').disabled = true;
+        document.getElementById('btn-split').style.display = "none";
 
-            hit();
+        dealCardTo('player');
 
-            setTimeout(() => {
-                if (!gameOver) {
-                    stand();
-                }
-            }, DEAL_ANIMATION_MS + 200);
-        }
+        setTimeout(() => {
+            if (getValue(player) > 21) {
+                message = "Přesáhl jsi 21! Prohrál jsi.";
+                gameOver = true;
 
-        function split() {
-            if (!(canSplit(player) && balance >= bet)) return;
+                revealDealerThen(() => {
+                    endGame();
+                    render();
+                });
+            } else {
+                dealerTurnInProgress = true;
 
-            splitMode = true;
-
-            splitHands = [
-                [player[0], deck.pop()],
-                [player[1], deck.pop()]
-            ];
-
-            splitAnim = [
-                [false, true],
-                [false, true]
-            ];
-
-            splitActive = 0;
-            splitDone = [false, false];
-            splitMsg = ["", ""];
-            splitDoubleUsed = [false, false];
-
-            balance -= bet;
-
-            document.getElementById('split-section').style.display = "";
-            document.getElementById('player-section').style.display = "none";
-            document.getElementById('btn-hit').disabled = true;
-            document.getElementById('btn-stand').disabled = true;
-            document.getElementById('btn-double').disabled = true;
-            document.getElementById('btn-split').style.display = "none";
-
-            render();
-
-            setTimeout(() => {
-                splitAnim[0][1] = false;
-                splitAnim[1][1] = false;
-                render();
-            }, DEAL_ANIMATION_MS);
-        }
-
-        function splitHit(hand) {
-            if (!splitMode || splitDone[hand] || hand !== splitActive) return;
-
-            addSplitCard(hand);
-
-            if (getValue(splitHands[hand]) > 21) {
-                setTimeout(() => {
-                    splitMsg[hand] = "Přesáhl jsi 21!";
-                    splitDone[hand] = true;
-                    nextSplitHand();
-                }, DEAL_ANIMATION_MS);
-            } else if (getValue(splitHands[hand]) === 21) {
-                setTimeout(() => {
-                    splitDone[hand] = true;
-                    nextSplitHand();
-                }, DEAL_ANIMATION_MS);
+                revealDealerThen(() => {
+                    setTimeout(() => {
+                        dealerDraw();
+                    }, 180);
+                });
             }
-        }
+        }, DEAL_ANIMATION_MS + 120);
+    }
 
-        function splitStand(hand) {
-            if (!splitMode || splitDone[hand] || hand !== splitActive) return;
+    function split() {
+        if (!(canSplit(player) && balance >= bet)) return;
+
+        splitMode = true;
+
+        splitHands = [
+            [player[0], deck.pop()],
+            [player[1], deck.pop()]
+        ];
+
+        splitAnim = [
+            [false, true],
+            [false, true]
+        ];
+
+        splitActive = 0;
+        splitDone = [false, false];
+        splitMsg = ["", ""];
+        splitDoubleUsed = [false, false];
+
+        balance -= bet;
+
+        document.getElementById('split-section').style.display = "";
+        document.getElementById('player-section').style.display = "none";
+        document.getElementById('btn-hit').disabled = true;
+        document.getElementById('btn-stand').disabled = true;
+        document.getElementById('btn-double').disabled = true;
+        document.getElementById('btn-split').style.display = "none";
+
+        render();
+    }
+
+    function splitHit(hand) {
+        if (!splitMode || splitDone[hand] || hand !== splitActive || dealerTurnInProgress) return;
+
+        dealCardTo('split', hand);
+
+        setTimeout(() => {
+            if (getValue(splitHands[hand]) > 21) {
+                splitMsg[hand] = "Přesáhl jsi 21!";
+                splitDone[hand] = true;
+                nextSplitHand();
+            } else if (getValue(splitHands[hand]) === 21) {
+                splitDone[hand] = true;
+                nextSplitHand();
+            }
+        }, DEAL_ANIMATION_MS);
+    }
+
+    function splitStand(hand) {
+        if (!splitMode || splitDone[hand] || hand !== splitActive || dealerTurnInProgress) return;
+
+        splitDone[hand] = true;
+        nextSplitHand();
+    }
+
+    function splitDouble(hand) {
+        if (!splitMode || splitDone[hand] || hand !== splitActive || splitDoubleUsed[hand] || balance < bet || dealerTurnInProgress) return;
+
+        splitDoubleUsed[hand] = true;
+        balance -= bet;
+        splitMsg[hand] = "Double!";
+
+        dealCardTo('split', hand);
+
+        setTimeout(() => {
+            if (getValue(splitHands[hand]) > 21) {
+                splitMsg[hand] = "Přesáhl jsi 21!";
+            }
 
             splitDone[hand] = true;
             nextSplitHand();
-        }
+        }, DEAL_ANIMATION_MS);
+    }
 
-        function splitDouble(hand) {
-            if (!splitMode || splitDone[hand] || hand !== splitActive || splitDoubleUsed[hand] || balance < bet) return;
+    function nextSplitHand() {
+        if (!splitDone[0]) {
+            splitActive = 0;
+        } else if (!splitDone[1]) {
+            splitActive = 1;
+        } else {
+            dealerTurnInProgress = true;
 
-            splitDoubleUsed[hand] = true;
-            balance -= bet;
-            splitMsg[hand] = "Double!";
-
-            addSplitCard(hand);
-
-            setTimeout(() => {
-                if (getValue(splitHands[hand]) > 21) {
-                    splitMsg[hand] = "Přesáhl jsi 21!";
-                }
-
-                splitDone[hand] = true;
-                nextSplitHand();
-            }, DEAL_ANIMATION_MS);
-        }
-
-        function nextSplitHand() {
-            if (!splitDone[0]) {
-                splitActive = 0;
-            } else if (!splitDone[1]) {
-                splitActive = 1;
-            } else {
-                revealDealerCard();
-
-                setTimeout(() => {
-                    dealerRevealPending = false;
-                    render();
-                    splitDealerDraw();
-                }, 600);
-            }
-
-            render();
-        }
-
-        function splitDealerDraw() {
-            if (getValue(dealer) < 17) {
-                addCard('dealer');
-
+            revealDealerThen(() => {
                 setTimeout(() => {
                     splitDealerDraw();
-                }, DEAL_ANIMATION_MS + 100);
-            } else {
-                for (let h = 0; h < 2; h++) {
-                    let p = getValue(splitHands[h]);
-                    let d = getValue(dealer);
-                    let handBet = bet * (splitDoubleUsed[h] ? 2 : 1);
-
-                    if (p > 21) {
-                        splitMsg[h] = "Prohrál jsi!";
-                    } else if (d > 21 || p > d) {
-                        splitMsg[h] = "Vyhrál jsi!";
-                        balance += handBet * 2;
-                    } else if (p < d) {
-                        splitMsg[h] = "Prohrál jsi!";
-                    } else {
-                        splitMsg[h] = "Remíza!";
-                        balance += handBet;
-                    }
-                }
-
-                gameOver = true;
-
-                setTimeout(() => {
-                    endGame();
-                    render();
-                }, 600);
-            }
-        }
-
-        function dealerDraw() {
-            if (getValue(dealer) <= 16) {
-                addCard('dealer');
-
-                setTimeout(() => {
-                    dealerDraw();
-                }, DEAL_ANIMATION_MS + 100);
-            } else {
-                let p = getValue(player);
-                let d = getValue(dealer);
-
-                if (p > 21) {
-                    message = "Prohrál jsi!";
-                } else if (d > 21 || p > d) {
-                    message = "Vyhrál jsi!";
-                    balance += bet * 2;
-                } else if (p < d) {
-                    message = "Prohrál jsi!";
-                } else {
-                    message = "Remíza!";
-                    balance += bet;
-                }
-
-                gameOver = true;
-
-                setTimeout(() => {
-                    endGame();
-                    render();
-                }, 600);
-            }
-        }
-
-        function saveBalance() {
-            const roundWin = Math.max(0, balance - roundStartBalance);
-            fetch('/update_balance/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                },
-                body: 'balance=' + balance + '&game=blackjack&won=' + (roundWin > 0) + '&win=' + roundWin
-            }).catch(error => {
-                console.log('Balance save error:', error);
+                }, 180);
             });
         }
 
-        function endGame() {
-            document.getElementById('btn-hit').disabled = true;
-            document.getElementById('btn-stand').disabled = true;
-            document.getElementById('btn-double').disabled = true;
-            document.getElementById('btn-deal').disabled = false;
-            document.getElementById('btn-split').style.display = "none";
-
-            canBet = true;
-            started = false;
-            dealerFlip = false;
-            dealerRevealPending = false;
-
-            saveBalance();
-        }
-
-        function cardHtml(card, anim) {
-            let redClass = (card.suit === '♥' || card.suit === '♦') ? ' red' : '';
-
-            return `
-                <span class="card-container">
-                    <span class="card${anim ? ' deal-fly' : ''}${redClass}">
-                        <div>${card.value}</div>
-                        <div>${card.suit}</div>
-                    </span>
-                </span>
-            `;
-        }
-
-        function dealerHiddenCardHtml(card, anim) {
-            let redClass = (card.suit === '♥' || card.suit === '♦') ? ' red' : '';
-
-            return `
-                <span class="flip-container${dealerFlip ? ' flipped' : ''}${anim ? ' deal-fly' : ''}">
-                    <span class="flipper">
-                        <span class="flip-front card back"></span>
-                        <span class="flip-back card${redClass}">
-                            <div>${card.value}</div>
-                            <div>${card.suit}</div>
-                        </span>
-                    </span>
-                </span>
-            `;
-        }
-
-        function render() {
-            let dealerHTML = '';
-
-            for (let i = 0; i < (dealer ? dealer.length : 0); i++) {
-                if (i === 0 && (dealerHidden || dealerRevealPending) && started) {
-                    dealerHTML += dealerHiddenCardHtml(dealer[i], dealerAnim[i]);
-                } else {
-                    dealerHTML += cardHtml(dealer[i], dealerAnim[i]);
-                }
-            }
-
-            document.getElementById('dealer-cards').innerHTML = dealerHTML;
-            document.getElementById('dealer-score').innerText =
-                (dealerHidden || dealerRevealPending) && started
-                    ? "?"
-                    : (dealer ? "Součet: " + getValue(dealer) : "");
-
-            if (splitMode) {
-                document.getElementById('split-section').style.display = "";
-                document.getElementById('player-section').style.display = "none";
-
-                for (let h = 0; h < 2; h++) {
-                    let html = '';
-
-                    for (let i = 0; i < splitHands[h].length; i++) {
-                        html += cardHtml(splitHands[h][i], splitAnim[h][i]);
-                    }
-
-                    document.getElementById('split-cards-' + h).innerHTML = html;
-                    document.getElementById('split-score-' + h).innerText = "Součet: " + getValue(splitHands[h]);
-                    document.getElementById('split-hand-' + h).className = "split-hand" + (splitActive === h ? " split-active" : "");
-                    document.getElementById('split-hit-' + h).disabled = splitDone[h] || splitActive !== h;
-                    document.getElementById('split-stand-' + h).disabled = splitDone[h] || splitActive !== h;
-                    document.getElementById('split-double-' + h).disabled = splitDone[h] || splitActive !== h || splitDoubleUsed[h] || balance < bet;
-                    document.getElementById('split-msg-' + h).innerText = splitMsg[h];
-                }
-            } else {
-                document.getElementById('split-section').style.display = "none";
-                document.getElementById('player-section').style.display = "";
-
-                let playerHTML = '';
-
-                for (let i = 0; i < (player ? player.length : 0); i++) {
-                    playerHTML += cardHtml(player[i], playerAnim[i]);
-                }
-
-                document.getElementById('player-cards').innerHTML = playerHTML;
-                document.getElementById('player-score').innerText = player ? "Součet: " + getValue(player) : "";
-            }
-
-            document.getElementById('bet-info').innerText = "Sázka: " + bet;
-            document.getElementById('balance-info').innerText = "Zůstatek: " + balance;
-            document.getElementById('message').innerText = message;
-        }
-
-        setBet(10);
         render();
-    </script>
+    }
+
+    function splitDealerDraw() {
+        if (getValue(dealer) < 17) {
+            dealCardTo('dealer');
+
+            setTimeout(() => {
+                splitDealerDraw();
+            }, DEAL_ANIMATION_MS + 180);
+        } else {
+            let anySplitWin = false;
+
+            for (let h = 0; h < 2; h++) {
+                let p = getValue(splitHands[h]);
+                let d = getValue(dealer);
+                let handBet = bet * (splitDoubleUsed[h] ? 2 : 1);
+
+                if (p > 21) {
+                    splitMsg[h] = "Prohrál jsi!";
+                } else if (d > 21 || p > d) {
+                    splitMsg[h] = "Vyhrál jsi!";
+                    balance += handBet * 2;
+                    anySplitWin = true;
+                    playSplitWinAnimation(h);
+                } else if (p < d) {
+                    splitMsg[h] = "Prohrál jsi!";
+                } else {
+                    splitMsg[h] = "Remíza!";
+                    balance += handBet;
+                }
+            }
+
+            gameOver = true;
+
+            if (anySplitWin) {
+                playWinAnimation('Výhra!');
+            }
+
+            setTimeout(() => {
+                endGame();
+                render();
+            }, 600);
+        }
+    }
+
+    function dealerDraw() {
+        if (getValue(dealer) < 17) {
+            dealCardTo('dealer');
+
+            setTimeout(() => {
+                dealerDraw();
+            }, DEAL_ANIMATION_MS + 180);
+        } else {
+            let p = getValue(player);
+            let d = getValue(dealer);
+
+            if (p > 21) {
+                message = "Prohrál jsi!";
+            } else if (d > 21 || p > d) {
+                message = "Vyhrál jsi!";
+                balance += bet * 2;
+                playWinAnimation('Výhra!');
+            } else if (p < d) {
+                message = "Prohrál jsi!";
+            } else {
+                message = "Remíza!";
+                balance += bet;
+            }
+
+            gameOver = true;
+
+            setTimeout(() => {
+                endGame();
+                render();
+            }, 600);
+        }
+    }
+
+    function saveBalance() {
+        const roundWin = Math.max(0, balance - roundStartBalance);
+
+        fetch('/update_balance/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: 'balance=' + balance + '&game=blackjack&won=' + (roundWin > 0) + '&win=' + roundWin
+        }).catch(error => {
+            console.log('Balance save error:', error);
+        });
+    }
+
+    function endGame() {
+        document.getElementById('btn-hit').disabled = true;
+        document.getElementById('btn-stand').disabled = true;
+        document.getElementById('btn-double').disabled = true;
+        document.getElementById('btn-deal').disabled = false;
+        document.getElementById('btn-split').style.display = "none";
+
+        canBet = true;
+        started = false;
+        dealerTurnInProgress = false;
+
+        saveBalance();
+        updateBetControls();
+    }
+
+    function cardHtml(card, anim) {
+        return `
+            <span class="bj-card-slot${anim ? ' deal-fly' : ''}">
+                ${cardFaceHtml(card)}
+            </span>
+        `;
+    }
+
+    function dealerHiddenCardHtml(card, anim) {
+        return `
+            <span class="bj-flip-slot${dealerFlipping ? ' flipped' : ''}${anim ? ' deal-fly' : ''}">
+                <span class="flipper">
+                    <span class="flip-front">
+                        <span class="bj-card-face back"></span>
+                    </span>
+                    <span class="flip-back">
+                        ${cardFaceHtml(card)}
+                    </span>
+                </span>
+            </span>
+        `;
+    }
+
+    function clearDealFlags() {
+        if (player) {
+            playerAnim = player.map(() => false);
+        }
+
+        if (dealer) {
+            dealerAnim = dealer.map(() => false);
+        }
+
+        splitAnim = splitHands.map(hand => hand.map(() => false));
+    }
+
+    function render() {
+        let dealerHTML = '';
+
+        for (let i = 0; i < (dealer ? dealer.length : 0); i++) {
+            if (i === 0 && !dealerRevealed && started) {
+                dealerHTML += dealerHiddenCardHtml(dealer[i], dealerAnim[i]);
+            } else {
+                dealerHTML += cardHtml(dealer[i], dealerAnim[i]);
+            }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = dealerHTML;
+        document.getElementById('dealer-score').innerText =
+            !dealerRevealed && started
+                ? "?"
+                : (dealer ? "Součet: " + getValue(dealer) : "");
+
+        if (splitMode) {
+            document.getElementById('split-section').style.display = "";
+            document.getElementById('player-section').style.display = "none";
+
+            for (let h = 0; h < 2; h++) {
+                let html = '';
+
+                for (let i = 0; i < splitHands[h].length; i++) {
+                    html += cardHtml(splitHands[h][i], splitAnim[h][i]);
+                }
+
+                document.getElementById('split-cards-' + h).innerHTML = html;
+                document.getElementById('split-score-' + h).innerText = "Součet: " + getValue(splitHands[h]);
+                document.getElementById('split-hand-' + h).className = "split-hand" + (splitActive === h ? " split-active" : "");
+                document.getElementById('split-hit-' + h).disabled = splitDone[h] || splitActive !== h || dealerTurnInProgress;
+                document.getElementById('split-stand-' + h).disabled = splitDone[h] || splitActive !== h || dealerTurnInProgress;
+                document.getElementById('split-double-' + h).disabled = splitDone[h] || splitActive !== h || splitDoubleUsed[h] || balance < bet || dealerTurnInProgress;
+                document.getElementById('split-msg-' + h).innerText = splitMsg[h];
+            }
+        } else {
+            document.getElementById('split-section').style.display = "none";
+            document.getElementById('player-section').style.display = "";
+
+            let playerHTML = '';
+
+            for (let i = 0; i < (player ? player.length : 0); i++) {
+                playerHTML += cardHtml(player[i], playerAnim[i]);
+            }
+
+            document.getElementById('player-cards').innerHTML = playerHTML;
+            document.getElementById('player-score').innerText = player ? "Součet: " + getValue(player) : "";
+        }
+
+        document.getElementById('balance-info').innerText = "Zůstatek: " + balance;
+
+        const messageEl = document.getElementById('message');
+        const isWinMessage = message && (
+            message.toLowerCase().includes("vyhr") ||
+            message.toLowerCase().includes("blackjack")
+        );
+
+        messageEl.innerText = message;
+        messageEl.className = "message" + (isWinMessage ? " win-message" : "");
+
+        updateBetControls();
+        setTimeout(clearDealFlags, 0);
+    }
+
+    updateBetControls();
+    render();
+</script>
 {% endblock %}
