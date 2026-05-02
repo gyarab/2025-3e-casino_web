@@ -6,7 +6,7 @@ SECRET_KEY = 'django-insecure-x*dnz*vm&cy6i+d1^@n2bo)@h$c#k^0(ed1ju!rbih++d9id+!
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # Allow all hosts (safe for development)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -20,7 +20,6 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',
 
     'main',
 ]
