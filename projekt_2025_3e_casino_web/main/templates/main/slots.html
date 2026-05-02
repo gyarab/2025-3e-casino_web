@@ -1,284 +1,462 @@
 {% extends 'main/base.html' %}
+{% load static %}
 
 {% block title %}Slot Machine - Casino Web{% endblock %}
 
 {% block extra_head %}
     <style>
         body {
-            background: var(--bg, linear-gradient(135deg, #1a0b2e 0%, #2a184a 55%, #1a0b2e 100%));
+            background: #030109;
             font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
         }
-        .game-card {
-            background: var(--game-card-bg, rgba(42, 24, 74, 0.95));
-            border-radius: 26px;
-            box-shadow: var(--game-card-shadow, 0 18px 55px rgba(0, 0, 0, 0.4), 0 0 24px rgba(139, 69, 247, 0.12));
-            padding: 40px;
-            margin: 50px auto;
-            max-width: 960px;
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
-            border: 1px solid var(--game-card-border, rgba(139, 69, 247, 0.2));
+
+        .slot-page {
+            display: flex;
+            justify-content: center;
+            padding: 22px 10px 46px;
         }
-        .game-card:hover { transform: translateY(-6px); }
-        .game-title {
-            font-size: 2.8rem;
-            font-weight: 800;
-            margin-bottom: 28px;
-            color: var(--game-card-title-color, #e9d5ff);
-            text-align: center;
-            text-shadow: var(--game-card-title-shadow, 0 0 24px rgba(139, 69, 247, 0.35));
+
+        .slot-machine-shell {
+            position: relative;
+            width: min(100%, 1024px);
+            aspect-ratio: 2 / 3;
+            background-image: url("{% static 'main/slot-template-idle.jpg' %}");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            filter: drop-shadow(0 22px 45px rgba(0, 0, 0, 0.55));
         }
+
+        .slot-machine-shell.is-spinning {
+            background-image: url("{% static 'main/slot-template-spinning.jpg' %}");
+        }
+
+        .game-title,
+        .balance-label,
+        .bet-label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
         .balance-box {
-            background: var(--game-section-bg, rgba(26, 11, 46, 0.85));
-            color: var(--game-card-text, #f3e8ff);
-            border-radius: 18px;
-            padding: 24px;
-            margin-bottom: 30px;
-            text-align: center;
-            font-size: 1.35rem;
-            font-weight: 700;
-            box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.12);
-            border: 1px solid rgba(139, 69, 247, 0.3);
+            position: absolute;
+            left: 10.7%;
+            top: 11.9%;
+            width: 78.6%;
+            height: 8.35%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
         }
-        .balance-label { opacity: 0.85; font-size: 0.95rem; display: block; margin-bottom: 6px; }
+
         .balance-amount {
-            font-size: 2.2rem;
-            letter-spacing: 0.05em;
-            color: #ffffff;
-            text-shadow: 0 0 14px rgba(139, 69, 247, 0.28);
+            margin-top: 3.3%;
+            color: #fff7ff;
+            font-size: clamp(1.65rem, 5.2vw, 4rem);
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 0 0 10px #f4dcff, 0 0 24px rgba(190, 88, 255, 0.8);
         }
+
         .reels-container {
+            position: absolute;
+            left: 12.4%;
+            top: 24.25%;
+            width: 75.2%;
+            height: 16.2%;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-            background: var(--game-section-bg, rgba(26, 11, 46, 0.85));
-            padding: 28px;
-            border-radius: 18px;
-            border: 1px solid rgba(139, 69, 247, 0.22);
-        }
-        .reel {
-            background: linear-gradient(180deg, var(--reel-bg-start, #2a184a) 0%, var(--reel-bg-end, #3b1f5c) 100%);
-            border: 2px solid var(--reel-border, rgba(168, 85, 247, 0.3));
-            border-radius: 16px;
-            height: 130px;
+            gap: 4.4%;
             overflow: hidden;
+            pointer-events: none;
+        }
+
+        .reel {
             position: relative;
-            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.25);
+            height: 100%;
+            overflow: hidden;
         }
-        .reel-track { position: absolute; inset: 0; transition: transform 0.6s ease-out; }
+
+        .reel-track {
+            position: absolute;
+            inset: 0;
+            transition: transform 0.6s ease-out;
+        }
+
         .reel-item {
-            font-size: 3.2rem;
-            height: 130px;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: clamp(2.8rem, 10vw, 7.6rem);
+            line-height: 1;
+            filter: drop-shadow(0 7px 2px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 9px rgba(255, 226, 92, 0.45));
         }
-        .reel.spinning .reel-track { animation: reel-spin 0.8s ease-out; }
-        @keyframes reel-spin { 0% { transform: translateY(0); } 100% { transform: translateY(-840px); } }
+
+        .reel.spinning .reel-track {
+            animation: reel-spin 0.8s ease-out;
+        }
+
+        @keyframes reel-spin {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-700%); }
+        }
+
         .result-display {
+            position: absolute;
+            left: 12.4%;
+            top: 44.78%;
+            width: 75.2%;
+            height: 4.7%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: transparent;
+            font-size: clamp(0.95rem, 3.4vw, 2.1rem);
+            font-weight: 900;
+            line-height: 1;
             text-align: center;
-            font-size: 1.5rem;
-            color: var(--game-card-text, #e9d5ff);
-            font-weight: 700;
-            background: rgba(168, 85, 247, 0.12);
-            border: 1px solid rgba(168, 85, 247, 0.35);
-            padding: 22px;
-            border-radius: 16px;
-            margin-bottom: 28px;
-            box-shadow: inset 0 0 18px rgba(168, 85, 247, 0.12);
+            text-transform: uppercase;
+            text-shadow: none;
+            pointer-events: none;
         }
+
         .controls-section {
-            background: var(--game-section-bg, rgba(42, 24, 74, 0.92));
-            border-radius: 22px;
-            padding: 28px;
-            margin-bottom: 24px;
-            border: 1px solid rgba(139, 69, 247, 0.22);
+            position: absolute;
+            inset: 0;
         }
-        .bet-label {
-            display: block;
-            font-weight: 700;
-            margin-bottom: 14px;
-            color: var(--game-card-text, #e9d5ff);
-        }
+
         .bet-buttons {
+            position: absolute;
+            left: 12.9%;
+            top: 54.95%;
+            width: 74.2%;
+            height: 4.85%;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-            gap: 12px;
-            margin-bottom: 18px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2.2%;
         }
+
+        .bet-btn,
+        .spin-button,
+        .bet-step-btn {
+            border: 1px solid rgba(227, 75, 255, 0.68);
+            background: linear-gradient(180deg, rgba(84, 13, 105, 0.58), rgba(18, 5, 34, 0.84));
+            color: #fff;
+            cursor: pointer;
+            padding: 0;
+            border-radius: 12px;
+            font-weight: 900;
+            text-align: center;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.65), 0 0 13px rgba(214, 69, 255, 0.7);
+            box-shadow: inset 0 0 16px rgba(214, 69, 255, 0.18), 0 0 8px rgba(214, 69, 255, 0.18);
+            transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+        }
+
         .bet-btn {
-            padding: 14px;
-            background: linear-gradient(135deg, var(--btn-base-end, #8b5cf6), var(--btn-base-start, #a855f7));
-            color: var(--btn-text, #1a0b2e);
-            border: none;
-            border-radius: 14px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 1rem;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 10px 20px rgba(42, 24, 74, 0.2);
+            font-size: clamp(0.82rem, 2.65vw, 1.62rem);
         }
-        .bet-btn:hover { transform: translateY(-2px); }
+
+        .bet-btn:hover,
+        .spin-button:hover,
+        .bet-step-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: inset 0 0 20px rgba(214, 69, 255, 0.28), 0 0 18px rgba(214, 69, 255, 0.52);
+        }
+
+        .bet-btn.active {
+            background: linear-gradient(180deg, rgba(165, 24, 220, 0.78), rgba(78, 7, 120, 0.92));
+            border-color: rgba(255, 100, 255, 0.98);
+            box-shadow: inset 0 0 22px rgba(255, 80, 255, 0.36), 0 0 20px rgba(255, 80, 255, 0.62);
+        }
+
+        .bet-btn:focus-visible,
+        .spin-button:focus-visible,
+        .bet-step-btn:focus-visible,
+        #betAmount:focus-visible {
+            outline: 3px solid rgba(255, 216, 95, 0.95);
+            outline-offset: 3px;
+        }
+
         #betAmount {
-            width: 100%;
-            padding: 14px;
-            border: 1px solid rgba(168, 85, 247, 0.36);
-            border-radius: 14px;
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 18px;
-            background: rgba(26, 11, 46, 0.95);
-            color: var(--game-card-text, #e9d5ff);
+            position: absolute;
+            left: 18.6%;
+            top: 61.45%;
+            width: 46.3%;
+            height: 3.55%;
+            border: 1px solid rgba(227, 75, 255, 0.62);
+            border-radius: 11px;
+            background: rgba(4, 1, 12, 0.72);
+            color: #fff;
+            font-size: clamp(0.82rem, 2.55vw, 1.48rem);
+            font-weight: 900;
+            line-height: 1;
+            padding: 0 2.3%;
+            box-shadow: inset 0 0 13px rgba(214, 69, 255, 0.16);
+            appearance: textfield;
         }
+
+        #betAmount::-webkit-outer-spin-button,
+        #betAmount::-webkit-inner-spin-button {
+            margin: 0;
+            appearance: none;
+        }
+
+        .bet-step-btn {
+            position: absolute;
+            top: 61.45%;
+            width: 5.8%;
+            height: 3.55%;
+            font-size: clamp(0.82rem, 2.7vw, 1.7rem);
+        }
+
+        .bet-step-btn.decrease {
+            left: 67.2%;
+        }
+
+        .bet-step-btn.increase {
+            left: 74.4%;
+        }
+
         .spin-button {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, var(--btn-base-start, #a855f7), var(--btn-base-end, #8b5cf6));
-            color: var(--btn-text, #1a0b2e);
-            border: none;
-            border-radius: 16px;
-            font-size: 1.3rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 12px 28px rgba(168, 85, 247, 0.24);
+            position: absolute;
+            left: 21.45%;
+            top: 67.72%;
+            width: 57.1%;
+            height: 6.55%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-        }
-        .spin-button:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 16px 32px rgba(168, 85, 247, 0.3); }
-        .spin-button:disabled { opacity: 0.62; cursor: not-allowed; }
-        .spin-icon { font-size: 1.3rem; }
-        .spin-button.spinning .spin-icon { animation: spin-rotate 1s linear infinite; }
-        @keyframes spin-rotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .result-text-display {
-            margin-top: 18px;
-            text-align: center;
-            font-size: 1.15rem;
-            font-weight: 700;
-            min-height: 32px;
-            color: var(--game-card-text, #e9d5ff);
-        }
-        .win-display {
-            text-align: center;
-            font-size: 1.2rem;
-            font-weight: 700;
-            padding: 18px;
-            border-radius: 16px;
-            min-height: 55px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(168, 85, 247, 0.3);
-        }
-        .win-display.big-win { background: linear-gradient(135deg, #22c55e, #8b5cf6); color: var(--btn-text, #1a0b2e); box-shadow: 0 10px 26px rgba(34, 197, 94, 0.24); }
-        .win-display.small-win { background: linear-gradient(135deg, var(--btn-base-start, #a855f7), var(--btn-base-end, #8b5cf6)); color: var(--btn-text, #1a0b2e); }
-        .win-display.lose { background: linear-gradient(135deg, #0f172a, #1e293b); color: #cfefff; }
-        .payouts-section {
-            background: var(--game-card-bg, rgba(42, 24, 74, 0.95));
+            gap: 0;
+            border-color: rgba(255, 214, 64, 0.95);
             border-radius: 18px;
-            padding: 26px;
-            margin-top: 30px;
-            border: 1px solid rgba(168, 85, 247, 0.3);
+            background: transparent;
+            color: #f8fff2;
+            font-size: clamp(1.7rem, 6.2vw, 4.45rem);
+            letter-spacing: 0;
+            text-shadow: 0 3px 1px rgba(0, 0, 0, 0.65), 0 0 16px rgba(255, 255, 255, 0.65);
+            box-shadow: none;
         }
-        .payouts-title {
-            font-size: 1.35rem;
-            font-weight: 800;
-            color: var(--game-card-title-color, #e9d5ff);
-            margin-bottom: 22px;
+
+        .spin-button:hover {
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 24px rgba(255, 229, 86, 0.48);
+        }
+
+        .spin-button:disabled {
+            cursor: wait;
+            opacity: 0.72;
+        }
+
+        .result-text-display,
+        .win-display {
+            position: absolute;
+            left: 6%;
+            width: 88%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff6cf;
+            font-size: clamp(2.6rem, 11vw, 7.4rem);
+            font-weight: 900;
+            line-height: 1.12;
             text-align: center;
+            text-shadow: 0 0 8px #fff8c8, 0 0 24px rgba(255, 216, 95, 1), 0 0 48px rgba(255, 76, 255, 0.78), 0 5px 2px rgba(0, 0, 0, 0.78);
+            pointer-events: none;
+            z-index: 8;
         }
+
+        .result-text-display {
+            display: none;
+        }
+
+        .win-display {
+            top: 29.4%;
+            min-height: 12.6%;
+            color: #ffe985;
+            opacity: 0;
+            transform: scale(0.72);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .win-display.big-win,
+        .win-display.small-win {
+            opacity: 1;
+            transform: scale(1);
+            color: #ffe985;
+            animation: slot-win-pop 1.1s ease both;
+        }
+
+        .win-display.lose {
+            opacity: 0;
+        }
+
+        @keyframes slot-win-pop {
+            0% { transform: scale(0.55); filter: brightness(1); }
+            42% { transform: scale(1.18); filter: brightness(1.28); }
+            68% { transform: scale(0.96); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+
+        .payouts-section {
+            position: absolute;
+            left: 9%;
+            top: 81.2%;
+            width: 82%;
+            height: 14.8%;
+        }
+
         .payouts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.6%;
+            height: 62%;
         }
+
         .payout-item {
-            background: var(--game-card-bg, rgba(42, 24, 74, 0.95));
-            padding: 18px;
-            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(227, 75, 255, 0.58);
+            border-radius: 9px;
+            background: rgba(4, 1, 12, 0.52);
+            color: #fff;
             text-align: center;
-            border: 1px solid rgba(168, 85, 247, 0.3);
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
-            color: var(--game-card-text, #e9d5ff);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: inset 0 0 12px rgba(214, 69, 255, 0.13);
         }
-        .payout-item:hover { transform: translateY(-2px); box-shadow: 0 14px 26px rgba(0, 0, 0, 0.22); }
-        .payout-symbols { font-size: 1.2rem; margin-bottom: 10px; }
-        .payout-multiplier { color: var(--page-title-color, #c4b5fd); font-weight: 700; font-size: 1.3rem; }
+
+        .payout-item.any-match {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 22%;
+            height: 34%;
+        }
+
+        .payout-symbols {
+            font-size: clamp(0.94rem, 2.7vw, 1.62rem);
+            line-height: 1;
+            margin-bottom: 7%;
+            white-space: nowrap;
+            filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.72));
+        }
+
+        .payout-label {
+            color: #f0a8ff;
+            font-size: clamp(0.6rem, 1.8vw, 1.1rem);
+            font-weight: 900;
+            line-height: 1;
+            text-transform: uppercase;
+            text-shadow: 0 0 8px rgba(241, 113, 255, 0.75);
+        }
+
+        .payout-multiplier {
+            color: #f0a8ff;
+            font-size: clamp(1rem, 2.7vw, 1.75rem);
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 0 0 8px rgba(241, 113, 255, 0.75);
+        }
+
+        @media (max-width: 640px) {
+            .slot-page {
+                padding: 8px 0 26px;
+            }
+
+            .slot-machine-shell {
+                width: 100%;
+            }
+
+            .bet-btn,
+            .spin-button,
+            .bet-step-btn,
+            #betAmount,
+            .payout-item {
+                border-radius: 7px;
+            }
+        }
     </style>
 {% endblock %}
 
 {% block content %}
-    <div class="container pt-4">
-        <div class="game-card">
-            <h1 class="game-title">🎰 Slot Machine</h1>
+    <div class="slot-page">
+        <div class="slot-machine-shell" id="slotMachine">
+            <h1 class="game-title">Slot Machine</h1>
+
             <div class="balance-box">
                 <span class="balance-label">Your Balance</span>
                 <span class="balance-amount">$<span id="balance">{{ balance }}</span></span>
             </div>
-            <div class="reels-container">
-                    <div class="reel" id="reel1">
+
+            <div class="reels-container" aria-label="Slot reels">
+                <div class="reel" id="reel1">
                     <div class="reel-track">
-                        <div class="reel-item">🍒</div>
-                        <div class="reel-item">🍊</div>
-                        <div class="reel-item">🍋</div>
-                        <div class="reel-item">💎</div>
-                        <div class="reel-item">⭐</div>
-                        <div class="reel-item">🔔</div>
-                        <div class="reel-item">7️⃣</div>
+                        <div class="reel-item">&#127826;</div>
+                        <div class="reel-item">&#127818;</div>
+                        <div class="reel-item">&#127819;</div>
+                        <div class="reel-item">&#128142;</div>
+                        <div class="reel-item">&#11088;</div>
+                        <div class="reel-item">&#128276;</div>
+                        <div class="reel-item">7</div>
                     </div>
                 </div>
                 <div class="reel" id="reel2">
                     <div class="reel-track">
-                        <div class="reel-item">🍒</div>
-                        <div class="reel-item">🍊</div>
-                        <div class="reel-item">🍋</div>
-                        <div class="reel-item">💎</div>
-                        <div class="reel-item">⭐</div>
-                        <div class="reel-item">🔔</div>
-                        <div class="reel-item">7️⃣</div>
+                        <div class="reel-item">&#127826;</div>
+                        <div class="reel-item">&#127818;</div>
+                        <div class="reel-item">&#127819;</div>
+                        <div class="reel-item">&#128142;</div>
+                        <div class="reel-item">&#11088;</div>
+                        <div class="reel-item">&#128276;</div>
+                        <div class="reel-item">7</div>
                     </div>
                 </div>
                 <div class="reel" id="reel3">
                     <div class="reel-track">
-                        <div class="reel-item">🍒</div>
-                        <div class="reel-item">🍊</div>
-                        <div class="reel-item">🍋</div>
-                        <div class="reel-item">💎</div>
-                        <div class="reel-item">⭐</div>
-                        <div class="reel-item">🔔</div>
-                        <div class="reel-item">7️⃣</div>
+                        <div class="reel-item">&#127826;</div>
+                        <div class="reel-item">&#127818;</div>
+                        <div class="reel-item">&#127819;</div>
+                        <div class="reel-item">&#128142;</div>
+                        <div class="reel-item">&#11088;</div>
+                        <div class="reel-item">&#128276;</div>
+                        <div class="reel-item">7</div>
                     </div>
                 </div>
             </div>
-            <div class="result-display" id="resultDisplay">Press SPIN to play!</div>
+
+            <div class="result-display" id="resultDisplay"></div>
+
             <div class="controls-section">
-                <label class="bet-label">Select Your Bet ($):</label>
+                <label class="bet-label" for="betAmount">Select Your Bet ($):</label>
                 <div class="bet-buttons">
-                    <button class="bet-btn" onclick="setBet(10)">$10</button>
-                    <button class="bet-btn" onclick="setBet(50)">$50</button>
-                    <button class="bet-btn" onclick="setBet(100)">$100</button>
+                    <button class="bet-btn" type="button" data-bet="10" onclick="setBet(10)">$10</button>
+                    <button class="bet-btn active" type="button" data-bet="50" onclick="setBet(50)">$50</button>
+                    <button class="bet-btn" type="button" data-bet="100" onclick="setBet(100)">$100</button>
                 </div>
-                <input type="number" id="betAmount" min="1" value="10" placeholder="Or enter custom amount">
-                <button class="spin-button" id="spinBtn" onclick="spin()">
+                <input type="number" id="betAmount" min="1" value="50" placeholder="50" aria-label="Custom bet amount">
+                <button class="bet-step-btn decrease" type="button" onclick="adjustBet(-10)" aria-label="Decrease bet">-</button>
+                <button class="bet-step-btn increase" type="button" onclick="adjustBet(10)" aria-label="Increase bet">+</button>
+                <button class="spin-button" id="spinBtn" type="button" onclick="spin()" aria-label="Spin slot machine">
                     <span>SPIN</span>
-                    <span class="spin-icon">🎡</span>
                 </button>
                 <div class="result-text-display" id="resultText"></div>
                 <div class="win-display" id="winDisplay"></div>
             </div>
+
             <div class="payouts-section">
-                <div class="payouts-title">💰 Payout Table</div>
                 <div class="payouts-grid">
-                    <div class="payout-item"><div class="payout-symbols">💎 💎 💎</div><div class="payout-multiplier">×10</div></div>
-                    <div class="payout-item"><div class="payout-symbols">7️⃣ 7️⃣ 7️⃣</div><div class="payout-multiplier">×8</div></div>
-                    <div class="payout-item"><div class="payout-symbols">⭐ ⭐ ⭐</div><div class="payout-multiplier">×6</div></div>
-                    <div class="payout-item"><div class="payout-symbols">🔔 🔔 🔔</div><div class="payout-multiplier">×5</div></div>
-                    <div class="payout-item"><div class="payout-symbols">Other ×3</div><div class="payout-multiplier">×3</div></div>
-                    <div class="payout-item"><div class="payout-symbols">Any 2 Match</div><div class="payout-multiplier">×1.5</div></div>
+                    <div class="payout-item"><div class="payout-symbols">&#128142; &#128142; &#128142;</div><div class="payout-multiplier">x10</div></div>
+                    <div class="payout-item"><div class="payout-symbols">7 7 7</div><div class="payout-multiplier">x8</div></div>
+                    <div class="payout-item"><div class="payout-symbols">&#11088; &#11088; &#11088;</div><div class="payout-multiplier">x6</div></div>
+                    <div class="payout-item"><div class="payout-symbols">&#128276; &#128276; &#128276;</div><div class="payout-multiplier">x5</div></div>
                 </div>
+                <div class="payout-item any-match"><div class="payout-label">Any 2 Match</div><div class="payout-multiplier">x1.5</div></div>
             </div>
         </div>
     </div>
@@ -287,23 +465,61 @@
 {% block extra_scripts %}
     <script>
         const CSRF_TOKEN = '{{ csrf_token }}';
+        const SYMBOLS = ['\uD83C\uDF52', '\uD83C\uDF4A', '\uD83C\uDF4B', '\uD83D\uDC8E', '\u2B50', '\uD83D\uDD14', '7\uFE0F\u20E3'];
+        const FALLBACK_SYMBOLS = ['\u00F0\u0178\u2026\u2019', '\u00F0\u0178\u2026\u0160', '\u00F0\u0178\u2026\u2039', '\u00F0\u0178\u2019\u017D', '\u00E2\u00AD\u0090', '\u00F0\u0178\u201D\u201D', '7\u00EF\u00B8\u008F\u00E2\u0083\u00A3'];
         let isSpinning = false;
-        function setBet(amount) { document.getElementById('betAmount').value = amount; }
+
+        function getBetValue() {
+            return parseInt(document.getElementById('betAmount').value, 10) || 0;
+        }
+
+        function updateActiveBetButton() {
+            const value = getBetValue();
+            document.querySelectorAll('.bet-btn').forEach(button => {
+                button.classList.toggle('active', parseInt(button.dataset.bet, 10) === value);
+            });
+        }
+
+        function setBet(amount) {
+            document.getElementById('betAmount').value = amount;
+            updateActiveBetButton();
+        }
+
+        function adjustBet(delta) {
+            const nextBet = Math.max(1, getBetValue() + delta);
+            document.getElementById('betAmount').value = nextBet;
+            updateActiveBetButton();
+        }
+
         function spin() {
             if (isSpinning) return;
-            const bet = parseInt(document.getElementById('betAmount').value);
-            if (!bet || bet <= 0) { alert('Please enter a valid bet amount!'); return; }
+
+            const bet = getBetValue();
+            if (!bet || bet <= 0) {
+                alert('Please enter a valid bet amount!');
+                return;
+            }
+
             const balance = parseFloat(document.getElementById('balance').textContent);
-            if (balance < bet) { alert('Insufficient balance!'); return; }
+            if (balance < bet) {
+                alert('Insufficient balance!');
+                return;
+            }
+
             isSpinning = true;
+            const machine = document.getElementById('slotMachine');
             const spinBtn = document.getElementById('spinBtn');
-            spinBtn.disabled = true;
             const reel1 = document.getElementById('reel1');
             const reel2 = document.getElementById('reel2');
             const reel3 = document.getElementById('reel3');
+
+            machine.classList.add('is-spinning');
+            spinBtn.classList.add('spinning');
+            spinBtn.disabled = true;
             reel1.classList.add('spinning');
             reel2.classList.add('spinning');
             reel3.classList.add('spinning');
+
             fetch('/api/spin/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
@@ -311,54 +527,80 @@
             })
             .then(response => response.json())
             .then(data => {
-                if (data.error) { alert(data.error); resetSpinState(); return; }
-                setTimeout(() => { displayResults(data); resetSpinState(); }, 800);
+                if (data.error) {
+                    alert(data.error);
+                    resetSpinState();
+                    return;
+                }
+                setTimeout(() => {
+                    displayResults(data);
+                    resetSpinState();
+                }, 800);
             })
-            .catch(error => { console.error('Error:', error); alert('Error spinning the reels!'); resetSpinState(); });
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error spinning the reels!');
+                resetSpinState();
+            });
         }
+
         function resetSpinState() {
             isSpinning = false;
-            const spinBtn = document.getElementById('spinBtn');
-            spinBtn.disabled = false;
+            document.getElementById('slotMachine').classList.remove('is-spinning');
+            document.getElementById('spinBtn').classList.remove('spinning');
+            document.getElementById('spinBtn').disabled = false;
             document.getElementById('reel1').classList.remove('spinning');
             document.getElementById('reel2').classList.remove('spinning');
             document.getElementById('reel3').classList.remove('spinning');
         }
+
+        function symbolIndex(symbol) {
+            const cleanIndex = SYMBOLS.indexOf(symbol);
+            if (cleanIndex !== -1) return cleanIndex;
+            const fallbackIndex = FALLBACK_SYMBOLS.indexOf(symbol);
+            return fallbackIndex === -1 ? 0 : fallbackIndex;
+        }
+
         function displayResults(data) {
-            const reel1 = document.getElementById('reel1');
-            const reel2 = document.getElementById('reel2');
-            const reel3 = document.getElementById('reel3');
-            const track1 = reel1.querySelector('.reel-track');
-            const track2 = reel2.querySelector('.reel-track');
-            const track3 = reel3.querySelector('.reel-track');
-            const resultDisplay = document.getElementById('resultDisplay');
+            const reels = [document.getElementById('reel1'), document.getElementById('reel2'), document.getElementById('reel3')];
             const resultText = document.getElementById('resultText');
             const winDisplay = document.getElementById('winDisplay');
             const balanceDisplay = document.getElementById('balance');
-            const symbols = ['🍒', '🍊', '🍋', '💎', '⭐', '🔔', '7️⃣'];
             const reelResults = data.reels;
-            const indices = reelResults.map(symbol => symbols.indexOf(symbol));
-            track1.style.transform = `translateY(-${indices[0] * 120}px)`;
-            track2.style.transform = `translateY(-${indices[1] * 120}px)`;
-            track3.style.transform = `translateY(-${indices[2] * 120}px)`;
-            resultDisplay.textContent = `${reelResults[0]} ${reelResults[1]} ${reelResults[2]}`;
+
+            reels.forEach((reel, index) => {
+                const track = reel.querySelector('.reel-track');
+                track.style.transform = `translateY(-${symbolIndex(reelResults[index]) * 100}%)`;
+            });
+
             balanceDisplay.textContent = data.new_balance;
+
             const win = parseFloat(data.win);
             if (win > 0) {
-                resultText.textContent = `🎉 WIN! You won $${data.win}!`;
-                winDisplay.textContent = `✨ +$${data.win} ✨`;
+                const formattedWin = win.toLocaleString('en-US', { maximumFractionDigits: 2 });
+                resultText.textContent = '';
+                winDisplay.textContent = `+$${formattedWin}`;
                 winDisplay.className = win >= 100 ? 'win-display big-win' : 'win-display small-win';
             } else {
-                resultText.textContent = '😢 No luck this time...';
-                winDisplay.textContent = '❌ Loss';
+                resultText.textContent = '';
+                winDisplay.textContent = '';
                 winDisplay.className = 'win-display lose';
             }
-            setTimeout(() => { resultText.textContent = ''; winDisplay.textContent = ''; winDisplay.className = 'win-display'; }, 5000);
+
+            setTimeout(() => {
+                resultText.textContent = '';
+                winDisplay.textContent = '';
+                winDisplay.className = 'win-display';
+            }, 5000);
         }
+
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('betAmount').addEventListener('keypress', function(e) {
+            const betAmount = document.getElementById('betAmount');
+            betAmount.addEventListener('input', updateActiveBetButton);
+            betAmount.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') spin();
             });
+            updateActiveBetButton();
         });
     </script>
 {% endblock %}
