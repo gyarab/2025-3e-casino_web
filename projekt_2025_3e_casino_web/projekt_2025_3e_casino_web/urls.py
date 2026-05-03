@@ -30,5 +30,16 @@ urlpatterns = [
     path('api/battlepass/', views.get_battle_pass_data, name='battlepass_data'),
     path('api/quests/', views.get_quests_data, name='quests_data'),
 
+    # Poker URLs
+    path('poker/', views.poker_lobby, name='poker_lobby'),
+    path('poker/create/', views.create_poker_game, name='create_poker_game'),
+    path('poker/game/<int:game_id>/', views.poker_game, name='poker_game'),
+    path('poker/game/<int:game_id>/join/', views.join_poker_game, name='join_poker_game'),
+    path('poker/game/<int:game_id>/start-hand/', views.start_poker_hand, name='start_poker_hand'),
+    path('poker/hand/<int:hand_id>/advance-stage/', views.advance_stage, name='advance_stage'),
+    path('poker/game/<int:game_id>/state/', views.get_game_state, name='get_game_state'),
+    path('poker/game/<int:game_id>/leave/', views.leave_poker_game, name='leave_poker_game'),
+    path('poker/hand/<int:hand_id>/action/', views.player_action, name='player_action'),
+
     path('accounts/', include('allauth.urls')),
 ]

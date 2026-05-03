@@ -41,6 +41,7 @@
         .game-card:nth-child(1) { animation-delay: 0.4s; }
         .game-card:nth-child(2) { animation-delay: 0.55s; }
         .game-card:nth-child(3) { animation-delay: 0.7s; }
+        .game-card:nth-child(4) { animation-delay: 0.85s; }
         .game-card:hover {
             transform: translateY(-5px) scale(1.02);
             box-shadow: var(--game-card-hover-shadow, 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 60px rgba(168, 85, 247, 0.22));
@@ -165,6 +166,11 @@
                 <h3>🎡 Slots</h3>
                 <p>Spin the reels and win big!</p>
                 <button class="btn-play" onclick="window.location.href='{% url 'slots' %}'">Play</button>
+            </div>
+            <div class="game-card">
+                <h3>♠️ Poker</h3>
+                <p>Play poker against other players!</p>
+                <button class="btn-play" onclick="window.location.href='{% url 'poker_lobby' %}'">Play</button>
             </div>
         </div>
 

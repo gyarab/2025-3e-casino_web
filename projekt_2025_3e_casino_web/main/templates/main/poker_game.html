@@ -1,0 +1,832 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Poker Game #{{ game.id }}{% endblock %}
+
+{% block content %}
+<div class="poker-game">
+    <div class="poker-table">
+        <div class="table-info">
+            <h2>Poker Game #{{ game.id }}</h2>
+            <p>Status: <span class="status">{{ game.get_status_display }}</span></p>
+        </div>
+
+        <!-- Game Status -->
+        <div class="game-status-box">
+            <p><strong>Current Turn:</strong> <span id="current-turn-display">Waiting...</span></p>
+            <p><strong>Stage:</strong> <span id="stage-display">Pre-Flop</span></p>
+        </div>
+            <!-- Community Cards -->
+            <div class="community-cards" id="community-cards">
+                <h3>Community Cards</h3>
+                <div class="cards-display" id="cards-display"></div>
+            </div>
+
+            <!-- Pot -->
+            <div class="pot-display">
+                <div class="pot-amount" id="pot-amount">Pot: $0.00</div>
+            </div>
+
+            <!-- Players -->
+            <div class="players-display" id="players-display"></div>
+        </div>
+
+        <!-- Player's Hand -->
+        <div class="player-info">
+            <h3>Your Hand</h3>
+            <div class="hole-cards" id="hole-cards"></div>
+            <p>Stack: $<span id="player-stack">0.00</span></p>
+            <p id="game-status-msg" style="margin-top: 10px; color: #ffff00; font-size: 14px;"></p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons" id="action-buttons" style="display: none;">
+            <button class="btn btn-danger" id="fold-btn">Fold</button>
+            <button class="btn btn-secondary" id="check-btn">Check</button>
+            <button class="btn btn-primary" id="call-btn">Call</button>
+            <div class="bet-input-group">
+                <input type="number" id="bet-amount" placeholder="Enter amount" step="0.01">
+                <button class="btn btn-success" id="bet-btn">Bet</button>
+                <button class="btn btn-warning" id="raise-btn">Raise</button>
+            </div>
+        </div>
+
+        <!-- Game Controls -->
+        <div class="game-controls">
+            {% if game.created_by == user %}
+                <button class="btn btn-primary" id="start-hand-btn">Start Hand</button>
+            {% endif %}
+            <button class="btn btn-warning" id="cash-out-btn">Cash Out</button>
+        </div>
+    </div>
+
+    <!-- Game Chat/Log -->
+    <div class="game-log">
+        <h3>Game Log</h3>
+        <div id="game-log-content" class="log-content"></div>
+    </div>
+</div>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    .poker-game {
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+        background: #000;
+        color: #00ff00;
+        min-height: 100vh;
+        flex-wrap: wrap;
+    }
+
+    .poker-table {
+        flex: 2;
+        min-width: 300px;
+    }
+
+    .table-info {
+        margin-bottom: 20px;
+    }
+
+    .table-info h2 {
+        margin: 0 0 10px 0;
+        color: #00ff00;
+        font-size: 24px;
+    }
+
+    .game-status-box {
+        background: rgba(255, 102, 0, 0.1);
+        border: 2px solid #ff6600;
+        border-radius: 8px;
+        padding: 10px 15px;
+        margin-bottom: 15px;
+        font-weight: bold;
+        color: #ff6600;
+    }
+
+    .status {
+        padding: 5px 10px;
+        background: rgba(0, 255, 0, 0.2);
+        border: 1px solid #00ff00;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .table-surface {
+        background: linear-gradient(135deg, #006400 0%, #003d00 100%);
+        border: 3px solid #00ff00;
+        border-radius: 20px;
+        padding: 20px;
+        min-height: 300px;
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .community-cards {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .community-cards h3 {
+        color: #00ff00;
+        margin: 0 0 10px 0;
+        font-size: 16px;
+    }
+
+    .cards-display {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .card {
+        width: 50px;
+        height: 70px;
+        background: #fff;
+        border: 2px solid #000;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #000;
+        font-size: 16px;
+    }
+
+    .card.hidden {
+        background: linear-gradient(45deg, #ff0000, #ff6600);
+        color: #fff;
+    }
+
+    .pot-display {
+        text-align: center;
+        margin: 15px 0;
+    }
+
+    .pot-amount {
+        font-size: 20px;
+        font-weight: bold;
+        color: #ffff00;
+        background: rgba(255, 255, 0, 0.1);
+        padding: 8px 15px;
+        border: 2px solid #ffff00;
+        border-radius: 8px;
+        display: inline-block;
+    }
+
+    .players-display {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .player-seat {
+        background: rgba(0, 255, 0, 0.1);
+        border: 2px solid #00ff00;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    .player-seat.active {
+        border-color: #ffff00;
+        background: rgba(255, 255, 0, 0.1);
+    }
+
+    .player-seat.turn {
+        border-color: #ff6600;
+        border-width: 3px;
+        box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+        animation: pulse-turn 0.6s infinite;
+    }
+
+    @keyframes pulse-turn {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    .player-seat.folded {
+        opacity: 0.5;
+        border-color: #ff0000;
+    }
+
+    .player-name {
+        font-weight: bold;
+        margin-bottom: 3px;
+        font-size: 13px;
+    }
+
+    .player-stack {
+        font-size: 12px;
+        margin: 3px 0;
+        color: #00ff00;
+    }
+
+    .player-status {
+        font-size: 11px;
+        color: #ffff00;
+    }
+
+    .player-info {
+        background: rgba(0, 255, 0, 0.1);
+        border: 2px solid #00ff00;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .player-info h3 {
+        margin: 0 0 10px 0;
+        color: #00ff00;
+        font-size: 16px;
+    }
+
+    .hole-cards {
+        display: flex;
+        gap: 12px;
+        margin: 10px 0;
+        justify-content: center;
+    }
+
+    .action-buttons {
+        background: rgba(0, 255, 0, 0.1);
+        border: 2px solid #00ff00;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 20px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        max-width: 500px;
+        align-items: start;
+        justify-items: start;
+    }
+
+    .action-buttons button {
+        padding: 10px 12px;
+        font-size: 12px;
+        min-width: auto;
+        height: auto;
+    }
+
+    .bet-input-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        grid-column: 1 / -1;
+        align-items: center;
+    }
+
+    .bet-input-group input {
+        padding: 8px;
+        background: #000;
+        border: 1px solid #00ff00;
+        color: #00ff00;
+        font-size: 12px;
+        height: auto;
+    }
+
+    .bet-input-group button {
+        padding: 8px;
+        font-size: 12px;
+        height: auto;
+    }
+
+    .btn-info {
+        background-color: #1E90FF;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .btn-info:hover {
+        background-color: #1873CC;
+    }
+
+    .game-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .game-controls button,
+    .game-controls a {
+        flex: 1;
+        min-width: 100px;
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    .game-log {
+        flex: 1;
+        background: rgba(0, 255, 0, 0.1);
+        border: 2px solid #00ff00;
+        border-radius: 8px;
+        padding: 15px;
+        min-width: 250px;
+    }
+
+    .game-log h3 {
+        margin-top: 0;
+        color: #00ff00;
+        font-size: 16px;
+    }
+
+    .log-content {
+        max-height: 400px;
+        overflow-y: auto;
+        font-size: 12px;
+    }
+
+    .log-entry {
+        padding: 5px 0;
+        border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+    }
+
+    .log-entry:last-child {
+        border-bottom: none;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+        .poker-game {
+            gap: 15px;
+            padding: 15px;
+        }
+
+        .poker-table {
+            flex: 1;
+            width: 100%;
+            min-width: auto;
+        }
+
+        .game-log {
+            width: 100%;
+            min-width: auto;
+            order: 3;
+        }
+
+        .table-surface {
+            padding: 15px;
+            min-height: auto;
+        }
+
+        .table-info h2 {
+            font-size: 20px;
+        }
+
+        .card {
+            width: 45px;
+            height: 63px;
+            font-size: 14px;
+        }
+
+        .players-display {
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+        }
+
+        .player-seat {
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        .action-buttons {
+            padding: 10px;
+            gap: 6px;
+            grid-template-columns: 1fr;
+            max-width: 100%;
+        }
+
+        .action-buttons button {
+            padding: 8px 10px;
+            font-size: 11px;
+        }
+
+        .bet-input-group {
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .bet-input-group input {
+            font-size: 11px;
+            padding: 6px;
+        }
+
+        .bet-input-group button {
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+
+        .game-controls {
+            gap: 8px;
+        }
+
+        .game-controls button,
+        .game-controls a {
+            min-width: 80px;
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        .pot-amount {
+            font-size: 16px;
+            padding: 6px 12px;
+        }
+
+        .hole-cards {
+            gap: 10px;
+        }
+
+        .log-content {
+            max-height: 250px;
+            font-size: 11px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .poker-game {
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .table-info h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .community-cards h3 {
+            font-size: 14px;
+        }
+
+        .card {
+            width: 40px;
+            height: 56px;
+            font-size: 12px;
+        }
+
+        .cards-display {
+            gap: 6px;
+        }
+
+        .players-display {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+
+        .player-seat {
+            padding: 6px;
+            font-size: 11px;
+        }
+
+        .player-name {
+            font-size: 11px;
+        }
+
+        .player-stack {
+            font-size: 10px;
+        }
+
+        .player-info {
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+
+        .player-info h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .hole-cards {
+            gap: 8px;
+        }
+
+        .action-buttons {
+            padding: 8px;
+            gap: 5px;
+            grid-template-columns: 1fr;
+            max-width: 100%;
+        }
+
+        .action-buttons button {
+            padding: 6px 8px;
+            font-size: 10px;
+        }
+
+        .bet-input-group {
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .bet-input-group input {
+            font-size: 10px;
+            padding: 5px;
+        }
+
+        .bet-input-group button {
+            padding: 5px 6px;
+            font-size: 10px;
+        }
+
+        .game-controls {
+            gap: 6px;
+        }
+
+        .game-controls button,
+        .game-controls a {
+            min-width: 70px;
+            padding: 6px;
+            font-size: 11px;
+        }
+
+        .game-log {
+            padding: 10px;
+        }
+
+        .game-log h3 {
+            font-size: 14px;
+        }
+
+        .log-content {
+            max-height: 200px;
+            font-size: 10px;
+        }
+
+        .status {
+            font-size: 12px;
+            padding: 4px 8px;
+        }
+    }
+</style>
+
+<script>
+    const gameId = {{ game.id }};
+    const currentPlayerId = {{ player.id|default:0 }};
+    let gameState = {};
+    let updateInterval;
+
+    async function getGameState() {
+        try {
+            const response = await fetch(`/poker/game/${gameId}/state/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                gameState = data;
+                updateDisplay();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    function updateDisplay() {
+        // Update pot
+        document.getElementById('pot-amount').textContent = `Pot: $${gameState.pot.toFixed(2)}`;
+
+        // Update stage display
+        const stageDisplay = document.getElementById('stage-display');
+        if (gameState.current_hand && gameState.stage) {
+            const stages = {
+                'pre-flop': 'Pre-Flop',
+                'flop': 'Flop',
+                'turn': 'Turn',
+                'river': 'River',
+                'completed': 'Completed'
+            };
+            stageDisplay.textContent = stages[gameState.stage] || gameState.stage;
+            stageDisplay.style.color = gameState.stage === 'completed' ? '#ff6600' : '#ffff00';
+        }
+
+        // Update current turn display
+        const currentTurnDisplay = document.getElementById('current-turn-display');
+        if (gameState.current_player_turn && gameState.players) {
+            const currentPlayer = gameState.players.find(p => p.id === gameState.current_player_turn);
+            if (currentPlayer) {
+                const isMyTurn = currentPlayer.id === currentPlayerId;
+                currentTurnDisplay.textContent = `${currentPlayer.username} ${isMyTurn ? '(YOUR TURN)' : ''}`;
+                currentTurnDisplay.style.color = isMyTurn ? '#ffff00' : '#00ff00';
+            }
+        }
+
+        // Update game status message
+        const statusMsg = document.getElementById('game-status-msg');
+        if (!gameState.current_hand) {
+            statusMsg.textContent = 'Waiting for hand to start...';
+        } else if (gameState.stage === 'completed') {
+            // Find winner
+            const winningPlayer = gameState.players.find(p => p.is_winner);
+            statusMsg.textContent = winningPlayer 
+                ? `🎉 ${winningPlayer.username} won $${gameState.pot}!` 
+                : 'Hand completed!';
+            statusMsg.style.color = '#ffff00';
+        } else {
+            const isMyTurn = gameState.current_player_turn === currentPlayerId;
+            statusMsg.textContent = isMyTurn ? 'Your turn - take an action!' : 'Waiting for other players...';
+            statusMsg.style.color = isMyTurn ? '#ffff00' : '#00ff00';
+        }
+
+        // Show action buttons if there's an active hand AND it's the current player's turn AND hand not completed
+        const isMyTurn = gameState.current_hand && gameState.current_player_turn === currentPlayerId && gameState.stage !== 'completed';
+        if (isMyTurn) {
+            document.getElementById('action-buttons').style.display = 'flex';
+        } else {
+            document.getElementById('action-buttons').style.display = 'none';
+        }
+
+        // Update community cards
+        const cardsDisplay = document.getElementById('cards-display');
+        cardsDisplay.innerHTML = '';
+        if (gameState.community_cards && gameState.community_cards.length > 0) {
+            gameState.community_cards.forEach(card => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card';
+                cardEl.textContent = card;
+                cardsDisplay.appendChild(cardEl);
+            });
+        }
+
+        // Update players
+        const playersDisplay = document.getElementById('players-display');
+        playersDisplay.innerHTML = '';
+        if (gameState.players && gameState.players.length > 0) {
+            gameState.players.forEach(player => {
+                const playerEl = document.createElement('div');
+                playerEl.className = 'player-seat';
+                if (player.is_folded) playerEl.classList.add('folded');
+                if (player.id === currentPlayerId) playerEl.classList.add('active');
+                if (player.is_current_turn) playerEl.classList.add('turn');
+                
+                let status = 'Active';
+                if (player.is_folded) status = 'Folded';
+                if (!player.is_active) status = 'Inactive';
+                if (player.is_current_turn) status = '▶ TURN';
+
+                playerEl.innerHTML = `
+                    <div class="player-name">${player.username}</div>
+                    <div class="player-stack">$${player.stack.toFixed(2)}</div>
+                    <div class="player-status">${status}</div>
+                `;
+                playersDisplay.appendChild(playerEl);
+            });
+        }
+
+        // Update player info
+        if (gameState.players) {
+            const currentPlayer = gameState.players.find(p => p.id === currentPlayerId);
+            if (currentPlayer) {
+                document.getElementById('player-stack').textContent = currentPlayer.stack.toFixed(2);
+                const holesCardsDiv = document.getElementById('hole-cards');
+                holesCardsDiv.innerHTML = '';
+                if (currentPlayer.hole_cards && currentPlayer.hole_cards.length > 0) {
+                    currentPlayer.hole_cards.forEach(card => {
+                        const cardEl = document.createElement('div');
+                        cardEl.className = 'card';
+                        cardEl.textContent = card;
+                        holesCardsDiv.appendChild(cardEl);
+                    });
+                }
+            }
+        }
+    }
+
+    // Action handlers
+    const foldBtn = document.getElementById('fold-btn');
+    const checkBtn = document.getElementById('check-btn');
+    const callBtn = document.getElementById('call-btn');
+    const betBtn = document.getElementById('bet-btn');
+    const raiseBtn = document.getElementById('raise-btn');
+
+    if (foldBtn) foldBtn.addEventListener('click', () => {
+        console.log('Fold clicked');
+        sendAction('fold', 0);
+    });
+    if (checkBtn) checkBtn.addEventListener('click', () => {
+        console.log('Check clicked');
+        sendAction('check', 0);
+    });
+    if (callBtn) callBtn.addEventListener('click', () => {
+        console.log('Call clicked');
+        sendAction('call', 0);
+    });
+    if (betBtn) betBtn.addEventListener('click', () => {
+        const amount = document.getElementById('bet-amount').value;
+        console.log('Bet clicked with amount:', amount);
+        sendAction('bet', amount);
+    });
+    if (raiseBtn) raiseBtn.addEventListener('click', () => {
+        const amount = document.getElementById('bet-amount').value;
+        console.log('Raise clicked with amount:', amount);
+        sendAction('raise', amount);
+    });
+
+    async function sendAction(actionType, amount) {
+        try {
+            console.log('Sending action:', actionType, amount, 'to hand:', gameState.current_hand);
+            
+            if (!gameState.current_hand) {
+                alert('No active hand. Please wait for a hand to start.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action_type', actionType);
+            formData.append('amount', amount);
+
+            const response = await fetch(`/poker/hand/${gameState.current_hand}/action/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            const data = await response.json();
+            console.log('Action response:', data);
+            
+            if (data.success) {
+                getGameState();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    const startHandBtn = document.getElementById('start-hand-btn');
+    if (startHandBtn) {
+        startHandBtn.addEventListener('click', async () => {
+            try {
+                console.log('Starting hand...');
+                const formData = new FormData();
+                const response = await fetch(`/poker/game/${gameId}/start-hand/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+                const data = await response.json();
+                console.log('Start hand response:', data);
+                if (data.success) {
+                    getGameState();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    }
+
+    // Cash out button
+    const cashOutBtn = document.getElementById('cash-out-btn');
+    if (cashOutBtn) {
+        cashOutBtn.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to cash out? You will leave the game and receive your current stack.')) {
+                try {
+                    console.log('Cashing out...');
+                    const response = await fetch(`/poker/game/${gameId}/leave/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        window.location.href = '/poker/';
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error cashing out');
+                }
+            }
+        });
+    }
+
+    // Initial load and periodic updates (1 second for real-time feel)
+    getGameState();
+    updateInterval = setInterval(getGameState, 1000);
+
+    // Cleanup on page leave
+    window.addEventListener('beforeunload', () => {
+        clearInterval(updateInterval);
+    });
+</script>
+{% endblock %}
