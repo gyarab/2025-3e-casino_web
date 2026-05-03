@@ -2,6 +2,59 @@
 
 {% block title %}Nastavení vzhledu - Casino Web{% endblock %}
 
+{% block extra_head %}
+    <style>
+        .theme-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 18px;
+            padding: 1rem 1.15rem;
+        }
+        .theme-option input[type="radio"] {
+            appearance: none;
+            -webkit-appearance: none;
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            position: relative;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background 0.2s ease;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        .theme-option input[type="radio"]::before {
+            content: "";
+            position: absolute;
+            inset: 0.28rem;
+            border-radius: 50%;
+            background: #38bdf8;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .theme-option input[type="radio"]:checked {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.16);
+        }
+        .theme-option input[type="radio"]:checked::before {
+            opacity: 1;
+        }
+        .theme-option label {
+            margin: 0;
+            font-weight: 700;
+            color: #f8fafc;
+            cursor: pointer;
+            flex: 1;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
     <div class="card bg-dark text-light p-4 shadow-lg" style="max-width: 780px; margin: auto;">
@@ -17,9 +70,9 @@
             <div class="row gy-3">
                 {% for value, label in theme_choices %}
                     <div class="col-12 col-md-6">
-                        <div class="form-check form-switch bg-secondary bg-opacity-10 rounded p-3">
+                        <div class="form-check theme-option">
                             <input class="form-check-input" type="radio" name="theme" id="theme_{{ value }}" value="{{ value }}" {% if current_theme == value %}checked{% endif %}>
-                            <label class="form-check-label text-light" for="theme_{{ value }}">{{ label }}</label>
+                            <label class="form-check-label" for="theme_{{ value }}">{{ label }}</label>
                         </div>
                     </div>
                 {% endfor %}
