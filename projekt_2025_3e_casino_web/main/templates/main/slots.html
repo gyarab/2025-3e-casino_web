@@ -469,6 +469,16 @@
         const FALLBACK_SYMBOLS = ['\u00F0\u0178\u2026\u2019', '\u00F0\u0178\u2026\u0160', '\u00F0\u0178\u2026\u2039', '\u00F0\u0178\u2019\u017D', '\u00E2\u00AD\u0090', '\u00F0\u0178\u201D\u201D', '7\u00EF\u00B8\u008F\u00E2\u0083\u00A3'];
         let isSpinning = false;
 
+        function normalizeSlotSymbol(symbol) {
+            const cleanIndex = SYMBOLS.indexOf(symbol);
+            if (cleanIndex !== -1) return SYMBOLS[cleanIndex];
+
+            const fallbackIndex = FALLBACK_SYMBOLS.indexOf(symbol);
+            if (fallbackIndex !== -1) return SYMBOLS[fallbackIndex];
+
+            return symbol;
+        }
+
         function getBetValue() {
             return parseInt(document.getElementById('betAmount').value, 10) || 0;
         }
@@ -532,6 +542,7 @@
                     resetSpinState();
                     return;
                 }
+
                 setTimeout(() => {
                     displayResults(data);
                     resetSpinState();
@@ -555,10 +566,26 @@
         }
 
         function symbolIndex(symbol) {
-            const cleanIndex = SYMBOLS.indexOf(symbol);
-            if (cleanIndex !== -1) return cleanIndex;
-            const fallbackIndex = FALLBACK_SYMBOLS.indexOf(symbol);
-            return fallbackIndex === -1 ? 0 : fallbackIndex;
+            const normalizedSymbol = normalizeSlotSymbol(symbol);
+            const index = SYMBOLS.indexOf(normalizedSymbol);
+            return index === -1 ? 0 : index;
+        }
+
+        function calculateDisplayWin(reelResults, bet, serverWin) {
+            const normalizedReels = reelResults.map(normalizeSlotSymbol);
+            const counts = {};
+
+            normalizedReels.forEach(symbol => {
+                counts[symbol] = (counts[symbol] || 0) + 1;
+            });
+
+            const maxMatch = Math.max(...Object.values(counts));
+
+            if (maxMatch === 2) {
+                return bet * 1.5;
+            }
+
+            return serverWin;
         }
 
         function displayResults(data) {
@@ -566,6 +593,7 @@
             const resultText = document.getElementById('resultText');
             const winDisplay = document.getElementById('winDisplay');
             const balanceDisplay = document.getElementById('balance');
+            const bet = parseFloat(data.bet);
             const reelResults = data.reels;
 
             reels.forEach((reel, index) => {
@@ -573,14 +601,16 @@
                 track.style.transform = `translateY(-${symbolIndex(reelResults[index]) * 100}%)`;
             });
 
+            const serverWin = parseFloat(data.win);
+            const displayWin = calculateDisplayWin(reelResults, bet, serverWin);
+
             balanceDisplay.textContent = data.new_balance;
 
-            const win = parseFloat(data.win);
-            if (win > 0) {
-                const formattedWin = win.toLocaleString('en-US', { maximumFractionDigits: 2 });
+            if (displayWin > 0) {
+                const formattedWin = displayWin.toLocaleString('en-US', { maximumFractionDigits: 2 });
                 resultText.textContent = '';
                 winDisplay.textContent = `+$${formattedWin}`;
-                winDisplay.className = win >= 100 ? 'win-display big-win' : 'win-display small-win';
+                winDisplay.className = displayWin >= 100 ? 'win-display big-win' : 'win-display small-win';
             } else {
                 resultText.textContent = '';
                 winDisplay.textContent = '';
