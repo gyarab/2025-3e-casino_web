@@ -11,6 +11,8 @@ urlpatterns = [
     path('signin/', views.signin, name='signin'),
 
     path('blackjack/', views.blackjack, name='blackjack'),
+    path('roulette/', views.roulette, name='roulette'),
+    path('api/spin-roulette/', views.spin_roulette, name='spin_roulette'),
     path('shop/', views.shop, name='shop'),
     path('gamemodes/', views.gamemodes, name='gamemodes'),
     path('slots/', views.slots, name='slots'),
@@ -22,6 +24,7 @@ urlpatterns = [
 
     path('api/spin-slot/', views.spin_slot, name='spin_slot'),
     path('api/spin/', views.spin_slot, name='spin_slot_alt'),
+    path('api/spin-roulette/', views.spin_roulette, name='spin_roulette'),
 
     path('api/battle-pass/', views.get_battle_pass_data, name='battle_pass_data'),
     path('api/battlepass/', views.get_battle_pass_data, name='battlepass_data'),
