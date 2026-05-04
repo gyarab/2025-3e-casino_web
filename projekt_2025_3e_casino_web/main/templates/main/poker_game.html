@@ -968,6 +968,8 @@
     let gameState = {};
     let updateInterval;
     let actionHistory = [];
+    let nextHandTimeout = null;
+    const SHOWDOWN_DELAY_MS = 6000;
 
     function getCallAmount() {
         if (!gameState.current_hand || !gameState.players) return 0;
@@ -1095,10 +1097,43 @@
                 }
                 
                 updateDisplay();
+                scheduleNextHandAfterShowdown();
             }
         } catch (error) {
             console.error('Error:', error);
         }
+    }
+
+    function scheduleNextHandAfterShowdown() {
+        if (gameState.stage !== 'completed') {
+            if (nextHandTimeout) {
+                clearTimeout(nextHandTimeout);
+                nextHandTimeout = null;
+            }
+            return;
+        }
+
+        if (nextHandTimeout) return;
+
+        nextHandTimeout = setTimeout(async () => {
+            nextHandTimeout = null;
+            try {
+                const response = await fetch(`/poker/game/${gameId}/start-hand/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+                const data = await response.json();
+                if (data.success || data.error === 'Hand already in progress') {
+                    await getGameState();
+                } else {
+                    console.error('Error starting next hand:', data.error);
+                }
+            } catch (error) {
+                console.error('Error starting next hand:', error);
+            }
+        }, SHOWDOWN_DELAY_MS);
     }
 
     function updateDisplay() {
@@ -1192,8 +1227,15 @@
         // Update community cards
         const cardsDisplay = document.getElementById('cards-display');
         cardsDisplay.innerHTML = '';
-        if (gameState.community_cards && gameState.community_cards.length > 0) {
-            gameState.community_cards.forEach(card => {
+        const visibleCommunityCards = (
+            gameState.community_cards && gameState.community_cards.length > 0
+        ) ? gameState.community_cards : (
+            gameState.last_hand_result && (gameState.stage === 'waiting' || gameState.stage === 'completed')
+                ? gameState.last_hand_result.community_cards || []
+                : []
+        );
+        if (visibleCommunityCards.length > 0) {
+            visibleCommunityCards.forEach(card => {
                 const cardEl = document.createElement('div');
                 cardEl.className = 'card';
                 cardEl.textContent = cardToEmoji(card);

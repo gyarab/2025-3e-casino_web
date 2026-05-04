@@ -744,7 +744,6 @@ def complete_all_in_showdown(hand):
     hand.current_player_turn = None
     determine_winner(hand)
     hand.save()
-    start_new_hand_after_completion(hand.game)
 
 def start_new_hand_after_completion(game):
     """Start a new hand after current hand completes, ready for players to get ready again"""
@@ -1414,6 +1413,7 @@ def get_game_state(request, game_id):
                 'winner': latest_completed_hand.winner.user.username,
                 'pot': float(latest_completed_hand.pot),
                 'hand_id': latest_completed_hand.id,
+                'community_cards': latest_completed_hand.community_cards,
             }
         
         players_data = []
