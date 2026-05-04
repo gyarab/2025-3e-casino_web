@@ -701,6 +701,11 @@ def determine_winner(hand):
     except Exception as e:
         print(f"Error determining winner: {str(e)}")
 
+def reset_betting_round(hand):
+    """Clear per-round bets when moving to the next street."""
+    hand.player_hands.update(current_bet=Decimal('0'))
+    hand.current_round_bet = Decimal('0')
+
 def start_new_hand_after_completion(game):
     """Start a new hand after current hand completes, ready for players to get ready again"""
     try:
@@ -762,7 +767,7 @@ def poker_lobby(request):
 def create_poker_game(request):
     """Create a new poker game"""
     try:
-        min_buy_in = Decimal(request.POST.get('min_buy_in', '10.00'))
+        min_buy_in = Decimal(request.POST.get('min_buy_in', '100.00'))
         max_buy_in = Decimal(request.POST.get('max_buy_in', '1000.00'))
         creator_buy_in = Decimal(request.POST.get('creator_buy_in', '100.00'))
         
@@ -1056,7 +1061,7 @@ def advance_stage(request, hand_id):
             # Post-flop: small blind acts first
             hand.current_player_turn = hand.small_blind_player
             hand.players_acted_this_round = {str(p.id): False for p in game.players.filter(is_active=True)}
-            hand.current_round_bet = Decimal('0')
+            reset_betting_round(hand)
             hand.save()
             return JsonResponse({'success': True, 'message': 'Advanced to Flop', 'stage': 'flop'})
         
@@ -1074,7 +1079,7 @@ def advance_stage(request, hand_id):
             # Post-flop: small blind acts first
             hand.current_player_turn = hand.small_blind_player
             hand.players_acted_this_round = {str(p.id): False for p in game.players.filter(is_active=True)}
-            hand.current_round_bet = Decimal('0')
+            reset_betting_round(hand)
             hand.save()
             return JsonResponse({'success': True, 'message': 'Advanced to Turn', 'stage': 'turn'})
         
@@ -1092,7 +1097,7 @@ def advance_stage(request, hand_id):
             # Post-flop: small blind acts first
             hand.current_player_turn = hand.small_blind_player
             hand.players_acted_this_round = {str(p.id): False for p in game.players.filter(is_active=True)}
-            hand.current_round_bet = Decimal('0')
+            reset_betting_round(hand)
             hand.save()
             return JsonResponse({'success': True, 'message': 'Advanced to River', 'stage': 'river'})
         
@@ -1139,19 +1144,21 @@ def player_action(request, hand_id):
         # Track bet amount before action for pot calculation
         bet_before = player_hand.current_bet
         
+        max_bet = hand.player_hands.filter(is_folded=False).aggregate(Max('current_bet'))['current_bet__max'] or Decimal('0')
+        if action_type == 'call_check':
+            action_type = 'call' if player_hand.current_bet < max_bet else 'check'
+
         # Process action
         if action_type == 'fold':
             player_hand.is_folded = True
             player_hand.save()
         elif action_type == 'check':
             # Can only check if no bet has been placed or if player has already matched the current bet
-            max_bet = hand.player_hands.filter(is_folded=False).aggregate(Max('current_bet'))['current_bet__max'] or Decimal('0')
             if player_hand.current_bet != max_bet:
                 return JsonResponse({'success': False, 'error': 'Cannot check when a bet has been placed. Must call or fold.'})
             pass
         elif action_type == 'call':
             # Call the current bet
-            max_bet = hand.player_hands.filter(is_folded=False).aggregate(Max('current_bet'))['current_bet__max'] or Decimal('0')
             call_amount = max_bet - player_hand.current_bet
             
             # Track original call amount for all-in refund
@@ -1204,6 +1211,10 @@ def player_action(request, hand_id):
             player.save()
             player_hand.save()
             hand.current_round_bet = player_hand.current_bet
+            hand.players_acted_this_round = {
+                str(p.id): False
+                for p in hand.game.players.filter(is_active=True)
+            }
         
         # Mark player as acted
         hand.players_acted_this_round[str(player.id)] = True
@@ -1258,7 +1269,7 @@ def player_action(request, hand_id):
             if p_hand:
                 max_bet = max(max_bet, p_hand.current_bet)
             
-            if str(p.id) not in hand.players_acted_this_round:
+            if not hand.players_acted_this_round.get(str(p.id), False):
                 round_complete = False
                 break
         
@@ -1274,7 +1285,7 @@ def player_action(request, hand_id):
         if round_complete:
             hand.round_number += 1
             hand.players_acted_this_round = {}  # Reset for next round
-            hand.current_round_bet = Decimal('0')
+            reset_betting_round(hand)
             
             # Advance stage based on current status
             if hand.status == 'pre-flop':
@@ -1352,6 +1363,14 @@ def get_game_state(request, game_id):
     try:
         game = PokerGame.objects.get(id=game_id)
         current_hand = game.hands.order_by('-created_at').first()
+        latest_completed_hand = game.hands.filter(status='completed', winner__isnull=False).order_by('-created_at').first()
+        last_hand_result = None
+        if latest_completed_hand and current_hand and current_hand.status in ['waiting', 'completed']:
+            last_hand_result = {
+                'winner': latest_completed_hand.winner.user.username,
+                'pot': float(latest_completed_hand.pot),
+                'hand_id': latest_completed_hand.id,
+            }
         
         players_data = []
         for player in game.players.all():
@@ -1387,6 +1406,7 @@ def get_game_state(request, game_id):
             'stage': current_hand.status if current_hand else 'pre-flop',
             'players_ready': current_hand.players_ready if current_hand else {},
             'current_round_bet': float(current_hand.current_round_bet) if current_hand else 0,
+            'last_hand_result': last_hand_result,
         })
     except PokerGame.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Game not found'})

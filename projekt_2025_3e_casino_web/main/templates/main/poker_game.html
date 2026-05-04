@@ -17,9 +17,16 @@
                 <p><strong>To Call:</strong> <span id="call-amount-display" style="font-size: 18px; font-weight: bold; color: #ffff00;">$0.00</span></p>
             </div>
                 <!-- Community Cards -->
-                <div class="community-cards" id="community-cards">
-                    <h3>Community Cards</h3>
-                    <div class="cards-display" id="cards-display"></div>
+                <div class="community-area">
+                    <div class="community-cards" id="community-cards">
+                        <h3>Community Cards</h3>
+                        <div class="cards-display" id="cards-display"></div>
+                    </div>
+                    <div class="winner-summary" id="winner-summary" style="display: none;">
+                        <div class="winner-label">Winner</div>
+                        <div class="winner-name" id="winner-name">-</div>
+                        <div class="winner-pot" id="winner-pot">$0.00</div>
+                    </div>
                 </div>
 
                 <!-- Pot -->
@@ -36,8 +43,7 @@
                 <div class="action-container">
                     <div class="action-button-group">
                         <button class="btn btn-action btn-fold" id="fold-btn">FOLD</button>
-                        <button class="btn btn-action btn-check" id="check-btn">CHECK</button>
-                        <button class="btn btn-action btn-call" id="call-btn">CALL</button>
+                        <button class="btn btn-action btn-call-check" id="call-check-btn" type="button">CALL/CHECK</button>
                     </div>
                     <div class="action-bet-group">
                         <input type="number" id="bet-amount" class="bet-input" placeholder="Amount" step="0.01" min="0">
@@ -162,9 +168,17 @@
         margin-bottom: 20px;
     }
 
+    .community-area {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin-bottom: 5px;
+    }
+
     .community-cards {
         text-align: center;
-        margin-bottom: 5px;
     }
 
     .community-cards h3 {
@@ -178,6 +192,38 @@
         justify-content: center;
         gap: 8px;
         flex-wrap: wrap;
+    }
+
+    .winner-summary {
+        min-width: 180px;
+        padding: 10px 14px;
+        border: 2px solid #ffff00;
+        border-radius: 8px;
+        background: rgba(255, 255, 0, 0.1);
+        text-align: center;
+        box-shadow: 0 0 16px rgba(255, 255, 0, 0.15);
+    }
+
+    .winner-label {
+        color: #ffaa00;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .winner-name {
+        color: #ffff00;
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-top: 3px;
+    }
+
+    .winner-pot {
+        color: #00ff00;
+        font-size: 15px;
+        font-weight: 700;
+        margin-top: 4px;
     }
 
     .card {
@@ -531,7 +577,6 @@
     }
 
     .btn-fold:disabled,
-    .btn-call:disabled,
     .btn-raise:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -560,18 +605,14 @@
         cursor: not-allowed;
     }
 
-    .btn-call {
+    .btn-call-check {
         background: linear-gradient(135deg, #3b82f6, #2563eb);
         color: #fff;
+        pointer-events: auto;
     }
 
-    .btn-call:hover:not(:disabled) {
+    .btn-call-check:hover {
         background: linear-gradient(135deg, #60a5fa, #3b82f6);
-    }
-
-    .btn-call:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
     }
 
     .btn-raise {
@@ -928,6 +969,13 @@
     let updateInterval;
     let actionHistory = [];
 
+    function getCallAmount() {
+        if (!gameState.current_hand || !gameState.players) return 0;
+        const currentPlayerHand = gameState.players.find(p => p.id === currentPlayerId);
+        if (!currentPlayerHand) return 0;
+        return Math.max(0, Number(gameState.current_round_bet || 0) - Number(currentPlayerHand.current_bet || 0));
+    }
+
     // Convert card string to emoji format
     function cardToEmoji(card) {
         if (!card || card === 'XX') return card;
@@ -1057,16 +1105,27 @@
         // Update pot
         document.getElementById('pot-amount').textContent = `Pot: $${gameState.pot.toFixed(2)}`;
 
-        // Calculate and update call amount
-        const getCallAmount = () => {
-            if (!gameState.current_hand) return 0;
-            const currentPlayerHand = gameState.players.find(p => p.id === currentPlayerId);
-            if (!currentPlayerHand) return 0;
-            return Math.max(0, gameState.current_round_bet - (currentPlayerHand.current_bet || 0));
-        };
-        
         const callAmount = getCallAmount();
         document.getElementById('call-amount-display').textContent = `$${callAmount.toFixed(2)}`;
+        const callCheckButton = document.getElementById('call-check-btn');
+        if (callCheckButton) {
+            callCheckButton.disabled = false;
+            callCheckButton.textContent = callAmount > 0 ? `CALL $${callAmount.toFixed(2)}` : 'CHECK';
+        }
+
+        const winnerSummary = document.getElementById('winner-summary');
+        const winnerName = document.getElementById('winner-name');
+        const winnerPot = document.getElementById('winner-pot');
+        const result = gameState.last_hand_result;
+        if (winnerSummary && winnerName && winnerPot) {
+            if (result && (gameState.stage === 'waiting' || gameState.stage === 'completed')) {
+                winnerName.textContent = result.winner || 'Unknown';
+                winnerPot.textContent = `Won $${Number(result.pot || 0).toFixed(2)}`;
+                winnerSummary.style.display = 'block';
+            } else {
+                winnerSummary.style.display = 'none';
+            }
+        }
 
         // Update stage display
         const stageDisplay = document.getElementById('stage-display');
@@ -1273,28 +1332,17 @@
 
     // Action handlers
     const foldBtn = document.getElementById('fold-btn');
-    const checkBtn = document.getElementById('check-btn');
-    const callBtn = document.getElementById('call-btn');
+    const callCheckBtn = document.getElementById('call-check-btn');
     const betRaiseBtn = document.getElementById('bet-raise-btn');
 
     if (foldBtn) foldBtn.addEventListener('click', () => {
         console.log('Fold clicked');
         sendAction('fold', 0);
     });
-    if (checkBtn) checkBtn.addEventListener('click', () => {
-        console.log('Check clicked');
-        sendAction('check', 0);
-    });
-    if (callBtn) callBtn.addEventListener('click', () => {
-        console.log('Call clicked');
-        const callAmount = (() => {
-            if (!gameState.current_hand) return 0;
-            const currentPlayerHand = gameState.players.find(p => p.id === currentPlayerId);
-            if (!currentPlayerHand) return 0;
-            return Math.max(0, gameState.current_round_bet - (currentPlayerHand.current_bet || 0));
-        })();
-        console.log('Call amount:', callAmount);
-        sendAction('call', callAmount);
+    if (callCheckBtn) callCheckBtn.addEventListener('click', () => {
+        console.log('Call/Check clicked');
+        callCheckBtn.disabled = false;
+        sendAction('call_check', getCallAmount());
     });
     if (betRaiseBtn) betRaiseBtn.addEventListener('click', () => {
         const amount = document.getElementById('bet-amount').value;
@@ -1338,6 +1386,7 @@
                 await getGameState();
             } else {
                 console.error('Action failed:', data.error);
+                alert(data.error || 'Action failed');
             }
         } catch (error) {
             console.error('Error sending action:', error);
