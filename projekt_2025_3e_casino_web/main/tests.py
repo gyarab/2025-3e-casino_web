@@ -16,6 +16,7 @@ from .views import (
 
 class QuestRotationTests(TestCase):
     def setUp(self):
+        Quest.objects.all().delete()
         self.user = User.objects.create_user(username='quester', password='pass')
 
     def create_quest(self, quest_type, title):

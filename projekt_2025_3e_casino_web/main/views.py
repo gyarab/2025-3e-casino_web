@@ -10,6 +10,7 @@ from decimal import Decimal
 import json
 import random
 from .models import UserProfile, BattlePass, Quest, UserQuestProgress, PokerGame, PokerPlayer, PokerHand, PlayerHand, PlayerAction
+from .quest_seed_data import seed_default_quests
 from django.db.models import Max
 
 ACTIVE_DAILY_QUESTS = 3
@@ -373,6 +374,9 @@ def get_quest_cycle_key(quest_type, current_date=None):
 def get_active_quests(quest_type, current_date=None):
     cycle_key = get_quest_cycle_key(quest_type, current_date)
     quest_limit = ACTIVE_WEEKLY_QUESTS if quest_type == 'weekly' else ACTIVE_DAILY_QUESTS
+    if not Quest.objects.exists():
+        seed_default_quests(Quest)
+
     quests = list(Quest.objects.filter(quest_type=quest_type).order_by('id'))
 
     if len(quests) <= quest_limit:
@@ -1397,4 +1401,3 @@ def leave_poker_game(request, game_id):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
-
