@@ -706,6 +706,46 @@ def reset_betting_round(hand):
     hand.player_hands.update(current_bet=Decimal('0'))
     hand.current_round_bet = Decimal('0')
 
+def deal_remaining_community_cards(hand):
+    """Deal the rest of the board from the stored deck."""
+    used_cards = set(hand.community_cards)
+    for player_hand in hand.player_hands.all():
+        used_cards.update(player_hand.hole_cards or [])
+
+    deck = hand.deck or create_deck()
+    remaining_cards = [card for card in deck if card not in used_cards]
+    if len(remaining_cards) < 5 - len(hand.community_cards):
+        remaining_cards = [card for card in create_deck() if card not in used_cards]
+
+    community_cards = list(hand.community_cards)
+    while len(community_cards) < 5 and remaining_cards:
+        next_card = remaining_cards.pop(0)
+        community_cards.append(next_card)
+        used_cards.add(next_card)
+
+    hand.community_cards = community_cards
+    hand.next_card_index = max(hand.next_card_index, len(used_cards))
+
+def all_remaining_players_all_in(hand, players):
+    """Return true when no non-folded player can make another betting decision."""
+    if players.count() < 2:
+        return False
+
+    for poker_player in players:
+        player_hand = hand.player_hands.filter(player=poker_player).first()
+        if not player_hand or not player_hand.is_all_in:
+            return False
+    return True
+
+def complete_all_in_showdown(hand):
+    """Run an all-in hand straight to showdown."""
+    deal_remaining_community_cards(hand)
+    hand.status = 'completed'
+    hand.current_player_turn = None
+    determine_winner(hand)
+    hand.save()
+    start_new_hand_after_completion(hand.game)
+
 def start_new_hand_after_completion(game):
     """Start a new hand after current hand completes, ready for players to get ready again"""
     try:
@@ -1258,6 +1298,10 @@ def player_action(request, hand_id):
             hand.save()
             # Start new hand for next round
             start_new_hand_after_completion(hand.game)
+            return JsonResponse({'success': True})
+
+        if all_remaining_players_all_in(hand, active_non_folded_players):
+            complete_all_in_showdown(hand)
             return JsonResponse({'success': True})
         
         # Check if round is complete (all non-folded players have acted and have equal bets)
