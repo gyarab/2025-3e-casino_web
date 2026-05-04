@@ -43,6 +43,17 @@
 
     .close-btn:hover { color: #38bdf8; }
 
+    .blackjack-title {
+        display: block;
+        width: auto;
+        max-width: 58%;
+        height: clamp(115px, 16vw, 170px);
+        margin: 0 auto 10px;
+        object-fit: contain;
+        filter: drop-shadow(0 14px 22px rgba(0,0,0,0.48));
+        pointer-events: none;
+    }
+
     .chips {
         position: absolute;
         top: 34px;
@@ -540,6 +551,13 @@
             overflow: visible;
         }
 
+        .blackjack-title {
+            width: auto;
+            max-width: 86%;
+            height: clamp(96px, 26vw, 140px);
+            margin-bottom: 12px;
+        }
+
         .chips {
             position: static;
             top: auto;
@@ -561,7 +579,7 @@
         }
 
         .section:first-of-type {
-            margin-top: 80px;
+            margin-top: 42px;
         }
 
         .cards {
@@ -631,19 +649,21 @@
 {% block content %}
     {% csrf_token %}
     <div class="table">
-        <button class="close-btn" onclick="window.location.href='/'" title="Zpět na hlavní stránku">&times;</button>
+        <button class="close-btn" onclick="window.location.href='/'" title="Back to home page">&times;</button>
 
-        <div class="balance-info" id="balance-info">Zůstatek: {{ balance }}</div>
+        <img class="blackjack-title" src="{% static 'main/blackjack-title.png' %}" alt="Blackjack">
+
+        <div class="balance-info" id="balance-info">Balance: {{ balance }}</div>
 
         <div class="chips">
             <img class="chip" src="/static/main/chip10.png" onclick="setBet(10)" data-chip="10" alt="10">
             <img class="chip" src="/static/main/chip50.png" onclick="setBet(50)" data-chip="50" alt="50">
             <img class="chip" src="/static/main/chip100.png" onclick="setBet(100)" data-chip="100" alt="100">
             <img class="chip" src="/static/main/chip500.png" onclick="setBet(500)" data-chip="500" alt="500">
-            <button class="bet-clear" id="btn-clear-bet" type="button" onclick="clearBet()">Zrušit vklad</button>
+            <button class="bet-clear" id="btn-clear-bet" type="button" onclick="clearBet()">Clear bet</button>
         </div>
 
-        <div class="bet-info" id="bet-info">Sázka: 0</div>
+        <div class="bet-info" id="bet-info">Bet: 0</div>
 
         <div class="section">
             <div class="dealer-label">DEALER</div>
@@ -652,7 +672,7 @@
         </div>
 
         <div class="section" id="player-section">
-            <div class="player-label">HRÁČ</div>
+            <div class="player-label">PLAYER</div>
             <div class="cards" id="player-cards"></div>
             <div class="score" id="player-score"></div>
         </div>
@@ -660,41 +680,41 @@
         <div class="section" id="split-section" style="display:none;">
             <div class="split-hands">
                 <div id="split-hand-0" class="split-hand">
-                    <div class="split-hand-label">LEVÁ RUKA</div>
+                    <div class="split-hand-label">LEFT HAND</div>
                     <div class="cards" id="split-cards-0"></div>
                     <div class="score" id="split-score-0"></div>
                     <div class="btns">
-                        <button class="btn-bj" onclick="splitHit(0)" id="split-hit-0">Přidat kartu</button>
-                        <button class="btn-bj" onclick="splitStand(0)" id="split-stand-0">Zůstat</button>
+                        <button class="btn-bj" onclick="splitHit(0)" id="split-hit-0">Hit</button>
+                        <button class="btn-bj" onclick="splitStand(0)" id="split-stand-0">Stand</button>
                         <button class="btn-bj" onclick="splitDouble(0)" id="split-double-0">Double</button>
                     </div>
                     <div class="message" id="split-msg-0"></div>
                     <div class="split-win-burst" id="split-win-burst-0" aria-hidden="true">
-                        <div class="split-win-burst-text">Výhra!</div>
+                        <div class="split-win-burst-text">Win!</div>
                     </div>
                 </div>
 
                 <div id="split-hand-1" class="split-hand">
-                    <div class="split-hand-label">PRAVÁ RUKA</div>
+                    <div class="split-hand-label">RIGHT HAND</div>
                     <div class="cards" id="split-cards-1"></div>
                     <div class="score" id="split-score-1"></div>
                     <div class="btns">
-                        <button class="btn-bj" onclick="splitHit(1)" id="split-hit-1">Přidat kartu</button>
-                        <button class="btn-bj" onclick="splitStand(1)" id="split-stand-1">Zůstat</button>
+                        <button class="btn-bj" onclick="splitHit(1)" id="split-hit-1">Hit</button>
+                        <button class="btn-bj" onclick="splitStand(1)" id="split-stand-1">Stand</button>
                         <button class="btn-bj" onclick="splitDouble(1)" id="split-double-1">Double</button>
                     </div>
                     <div class="message" id="split-msg-1"></div>
                     <div class="split-win-burst" id="split-win-burst-1" aria-hidden="true">
-                        <div class="split-win-burst-text">Výhra!</div>
+                        <div class="split-win-burst-text">Win!</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="btns" id="main-btns">
-            <button class="btn-bj" onclick="deal()" id="btn-deal" disabled>Rozdat</button>
-            <button class="btn-bj" onclick="hit()" id="btn-hit" disabled>Přidat kartu</button>
-            <button class="btn-bj" onclick="stand()" id="btn-stand" disabled>Zůstat</button>
+            <button class="btn-bj" onclick="deal()" id="btn-deal" disabled>Deal</button>
+            <button class="btn-bj" onclick="hit()" id="btn-hit" disabled>Hit</button>
+            <button class="btn-bj" onclick="stand()" id="btn-stand" disabled>Stand</button>
             <button class="btn-bj" onclick="doubleDown()" id="btn-double" disabled>Double</button>
             <button class="btn-bj" onclick="split()" id="btn-split" style="display:none;">Split</button>
         </div>
@@ -702,7 +722,7 @@
         <div class="message" id="message"></div>
 
         <div class="win-burst" id="win-burst" aria-hidden="true">
-            <div class="win-burst-text" id="win-burst-text">Výhra!</div>
+            <div class="win-burst-text" id="win-burst-text">Win!</div>
         </div>
     </div>
 {% endblock %}
@@ -809,7 +829,7 @@
         `;
     }
 
-    function playWinAnimation(text = 'Výhra!') {
+    function playWinAnimation(text = 'Win!') {
         const burst = document.getElementById('win-burst');
         const burstText = document.getElementById('win-burst-text');
 
@@ -841,7 +861,7 @@
     }
 
     function updateBetControls() {
-        document.getElementById('bet-info').innerText = "Sázka: " + bet;
+        document.getElementById('bet-info').innerText = "Bet: " + bet;
 
         const dealBtn = document.getElementById('btn-deal');
         const clearBtn = document.getElementById('btn-clear-bet');
@@ -870,7 +890,7 @@
         if (!canBet) return;
 
         if (bet + amount > balance) {
-            message = "Nemáš dostatek žetonů pro tuhle sázku.";
+            message = "You do not have enough chips for this bet.";
             render();
             return;
         }
@@ -931,13 +951,13 @@
 
     function deal() {
         if (bet <= 0) {
-            message = "Nejdřív si vyber sázku.";
+            message = "Choose a bet first.";
             render();
             return;
         }
 
         if (balance < bet) {
-            message = "Nedostatek prostředků!";
+            message = "Not enough funds!";
             render();
             return;
         }
@@ -1004,10 +1024,10 @@
         if (isBlackjack(player)) {
             revealDealerThen(() => {
                 if (isBlackjack(dealer)) {
-                    message = "Remíza! Oba máte blackjack.";
+                    message = "Push! Both have blackjack.";
                     balance += bet;
                 } else {
-                    message = "Blackjack! Výhra 3:2";
+                    message = "Blackjack! You win 3:2";
                     balance += Math.floor(bet * 2.5);
                     playWinAnimation('Blackjack!');
                 }
@@ -1044,7 +1064,7 @@
 
         setTimeout(() => {
             if (getValue(player) > 21) {
-                message = "Přesáhl jsi 21! Prohrál jsi.";
+                message = "You busted! You lose.";
                 gameOver = true;
 
                 revealDealerThen(() => {
@@ -1090,7 +1110,7 @@
 
         setTimeout(() => {
             if (getValue(player) > 21) {
-                message = "Přesáhl jsi 21! Prohrál jsi.";
+                message = "You busted! You lose.";
                 gameOver = true;
 
                 revealDealerThen(() => {
@@ -1148,7 +1168,7 @@
 
         setTimeout(() => {
             if (getValue(splitHands[hand]) > 21) {
-                splitMsg[hand] = "Přesáhl jsi 21!";
+                splitMsg[hand] = "Busted!";
                 splitDone[hand] = true;
                 nextSplitHand();
             } else if (getValue(splitHands[hand]) === 21) {
@@ -1176,7 +1196,7 @@
 
         setTimeout(() => {
             if (getValue(splitHands[hand]) > 21) {
-                splitMsg[hand] = "Přesáhl jsi 21!";
+                splitMsg[hand] = "Busted!";
             }
 
             splitDone[hand] = true;
@@ -1218,16 +1238,16 @@
                 let handBet = bet * (splitDoubleUsed[h] ? 2 : 1);
 
                 if (p > 21) {
-                    splitMsg[h] = "Prohrál jsi!";
+                    splitMsg[h] = "You lose!";
                 } else if (d > 21 || p > d) {
-                    splitMsg[h] = "Vyhrál jsi!";
+                    splitMsg[h] = "You win!";
                     balance += handBet * 2;
                     anySplitWin = true;
                     playSplitWinAnimation(h);
                 } else if (p < d) {
-                    splitMsg[h] = "Prohrál jsi!";
+                    splitMsg[h] = "You lose!";
                 } else {
-                    splitMsg[h] = "Remíza!";
+                    splitMsg[h] = "Push!";
                     balance += handBet;
                 }
             }
@@ -1235,7 +1255,7 @@
             gameOver = true;
 
             if (anySplitWin) {
-                playWinAnimation('Výhra!');
+                playWinAnimation('Win!');
             }
 
             setTimeout(() => {
@@ -1257,15 +1277,15 @@
             let d = getValue(dealer);
 
             if (p > 21) {
-                message = "Prohrál jsi!";
+                message = "You lose!";
             } else if (d > 21 || p > d) {
-                message = "Vyhrál jsi!";
+                message = "You win!";
                 balance += bet * 2;
-                playWinAnimation('Výhra!');
+                playWinAnimation('Win!');
             } else if (p < d) {
-                message = "Prohrál jsi!";
+                message = "You lose!";
             } else {
-                message = "Remíza!";
+                message = "Push!";
                 balance += bet;
             }
 
@@ -1358,7 +1378,7 @@
         document.getElementById('dealer-score').innerText =
             !dealerRevealed && started
                 ? "?"
-                : (dealer ? "Součet: " + getValue(dealer) : "");
+                : (dealer ? "Total: " + getValue(dealer) : "");
 
         if (splitMode) {
             document.getElementById('split-section').style.display = "";
@@ -1372,7 +1392,7 @@
                 }
 
                 document.getElementById('split-cards-' + h).innerHTML = html;
-                document.getElementById('split-score-' + h).innerText = "Součet: " + getValue(splitHands[h]);
+                document.getElementById('split-score-' + h).innerText = "Total: " + getValue(splitHands[h]);
                 document.getElementById('split-hand-' + h).className = "split-hand" + (splitActive === h ? " split-active" : "");
                 document.getElementById('split-hit-' + h).disabled = splitDone[h] || splitActive !== h || dealerTurnInProgress;
                 document.getElementById('split-stand-' + h).disabled = splitDone[h] || splitActive !== h || dealerTurnInProgress;
@@ -1390,14 +1410,14 @@
             }
 
             document.getElementById('player-cards').innerHTML = playerHTML;
-            document.getElementById('player-score').innerText = player ? "Součet: " + getValue(player) : "";
+            document.getElementById('player-score').innerText = player ? "Total: " + getValue(player) : "";
         }
 
-        document.getElementById('balance-info').innerText = "Zůstatek: " + balance;
+        document.getElementById('balance-info').innerText = "Balance: " + balance;
 
         const messageEl = document.getElementById('message');
         const isWinMessage = message && (
-            message.toLowerCase().includes("vyhr") ||
+            message.toLowerCase().includes("win") ||
             message.toLowerCase().includes("blackjack")
         );
 
