@@ -1,2 +1,2 @@
 # 2025-3e-casino_web
-hello
+WEBSITE LINK: casinoweb.duckdns.org

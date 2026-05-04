@@ -5,69 +5,77 @@
 {% block content %}
 <div class="poker-game">
     <div class="poker-table">
-        <div class="table-info">
-            <h2>Poker Game #{{ game.id }}</h2>
-            <p>Status: <span class="status">{{ game.get_status_display }}</span></p>
-        </div>
-
-        <!-- Game Status -->
-        <div class="game-status-box">
-            <p><strong>Current Turn:</strong> <span id="current-turn-display">Waiting...</span></p>
-            <p><strong>Stage:</strong> <span id="stage-display">Pre-Flop</span></p>
-            <p><strong>To Call:</strong> <span id="call-amount-display" style="font-size: 18px; font-weight: bold; color: #ffff00;">$0.00</span></p>
-        </div>
-            <!-- Community Cards -->
-            <div class="community-cards" id="community-cards">
-                <h3>Community Cards</h3>
-                <div class="cards-display" id="cards-display"></div>
+            <div class="table-info">
+                <h2>Poker Game #{{ game.id }}</h2>
+                <p>Status: <span class="status">{{ game.get_status_display }}</span></p>
             </div>
 
-            <!-- Pot -->
-            <div class="pot-display">
-                <div class="pot-amount" id="pot-amount">Pot: $0.00</div>
+            <!-- Game Status -->
+            <div class="game-status-box">
+                <p><strong>Current Turn:</strong> <span id="current-turn-display">Waiting...</span></p>
+                <p><strong>Stage:</strong> <span id="stage-display">Pre-Flop</span></p>
+                <p><strong>To Call:</strong> <span id="call-amount-display" style="font-size: 18px; font-weight: bold; color: #ffff00;">$0.00</span></p>
+            </div>
+                <!-- Community Cards -->
+                <div class="community-cards" id="community-cards">
+                    <h3>Community Cards</h3>
+                    <div class="cards-display" id="cards-display"></div>
+                </div>
+
+                <!-- Pot -->
+                <div class="pot-display">
+                    <div class="pot-amount" id="pot-amount">Pot: $0.00</div>
+                </div>
+
+                <!-- Players -->
+                <div class="players-display" id="players-display"></div>
             </div>
 
-            <!-- Players -->
-            <div class="players-display" id="players-display"></div>
-        </div>
-
-        <!-- Player's Hand -->
-        <div class="player-info">
-            <h3>Your Hand</h3>
-            <div class="hole-cards" id="hole-cards"></div>
-            <p>Stack: $<span id="player-stack">0.00</span></p>
-            <p id="game-status-msg" style="margin-top: 10px; color: #ffff00; font-size: 14px;"></p>
-        </div>
-
-        <!-- Ready Status -->
-        <div class="ready-status" id="ready-status" style="display: none; margin-top: 15px; padding: 15px; border: 2px solid #00ff00; border-radius: 8px;">
-            <h3>Players Ready:</h3>
-            <div id="ready-players" style="margin-top: 10px;"></div>
-            <button class="btn btn-success" id="ready-btn" style="margin-top: 10px;">I'm Ready</button>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="action-buttons" id="action-buttons" style="display: none;">
-            <button class="btn btn-danger" id="fold-btn">Fold</button>
-            <button class="btn btn-secondary" id="check-btn">Check</button>
-            <button class="btn btn-primary" id="call-btn">Call</button>
-            <div class="bet-input-group">
-                <input type="number" id="bet-amount" placeholder="Enter amount" step="0.01">
-                <button class="btn btn-success" id="bet-raise-btn">Bet/Raise</button>
+            <!-- Action Buttons -->
+            <div class="action-section" id="action-buttons" style="display: none;">
+                <div class="action-container">
+                    <div class="action-button-group">
+                        <button class="btn btn-action btn-fold" id="fold-btn">FOLD</button>
+                        <button class="btn btn-action btn-check" id="check-btn">CHECK</button>
+                        <button class="btn btn-action btn-call" id="call-btn">CALL</button>
+                    </div>
+                    <div class="action-bet-group">
+                        <input type="number" id="bet-amount" class="bet-input" placeholder="Amount" step="0.01" min="0">
+                        <button class="btn btn-action btn-raise" id="bet-raise-btn">BET/RAISE</button>
+                    </div>
+                </div>
             </div>
+
+            <!-- Player's Hand -->
+            <div class="player-info">
+                <h3>Your Hand</h3>
+                <div class="hole-cards" id="hole-cards"></div>
+                <p>Stack: $<span id="player-stack">0.00</span></p>
+                <p id="game-status-msg" style="margin-top: 10px; color: #ffff00; font-size: 14px;"></p>
+            </div>
+
+            <!-- Ready Status -->
+            <div class="ready-section" id="ready-status" style="display: none;">
+                <div class="ready-container">
+                    <h3 class="ready-title">Waiting for Players</h3>
+                    <div id="ready-players" class="ready-list"></div>
+                    <button class="btn btn-ready" id="ready-btn">I'm Ready</button>
+                </div>
+            </div>
+            
+            <!-- Cash Out Button (outside ready section for always visible) -->
+            <button class="btn btn-cashout-ready" id="cash-out-btn-ready" style="display: block;">CASH OUT</button>
         </div>
 
+    <!-- Action Buttons at Bottom -->
+    <div class="game-bottom-section">
         <!-- Game Controls -->
-        <div class="game-controls">
-            <button class="btn btn-warning" id="cash-out-btn">Cash Out</button>
+        <div class="game-controls-section">
         </div>
     </div>
 
-    <!-- Game Chat/Log -->
-    <div class="game-log">
-        <h3>Game Log</h3>
-        <div id="game-log-content" class="log-content"></div>
-    </div>
+    <!-- Blank Space -->
+    <div class="spacer"></div>
 </div>
 
 <style>
@@ -77,21 +85,47 @@
 
     .poker-game {
         display: flex;
+        flex-direction: column;
         gap: 20px;
         padding: 20px;
-        background: #000;
-        color: #00ff00;
+        background: linear-gradient(135deg, rgba(6, 20, 40, 0.95), rgba(15, 8, 32, 0.95));
+        color: #e9d5ff;
         min-height: 100vh;
-        flex-wrap: wrap;
+        position: relative;
+    }
+
+    .game-main-area {
+        display: none;
     }
 
     .poker-table {
-        flex: 2;
-        min-width: 300px;
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .game-bottom-section {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.06));
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        gap: 15px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        flex: 0;
+    }
+
+    .spacer {
+        flex: 1;
+        min-height: 300px;
     }
 
     .table-info {
-        margin-bottom: 20px;
+        margin-bottom: 5px;
     }
 
     .table-info h2 {
@@ -105,7 +139,7 @@
         border: 2px solid #ff6600;
         border-radius: 8px;
         padding: 10px 15px;
-        margin-bottom: 15px;
+        margin-bottom: 5px;
         font-weight: bold;
         color: #ff6600;
     }
@@ -130,7 +164,7 @@
 
     .community-cards {
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 5px;
     }
 
     .community-cards h3 {
@@ -167,7 +201,7 @@
 
     .pot-display {
         text-align: center;
-        margin: 15px 0;
+        margin: 5px 0;
     }
 
     .pot-amount {
@@ -185,7 +219,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 10px;
-        margin-top: 15px;
+        margin-top: 5px;
     }
 
     .player-seat {
@@ -240,12 +274,12 @@
         background: rgba(0, 255, 0, 0.1);
         border: 2px solid #00ff00;
         border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 20px;
+        padding: 10px;
+        margin-bottom: 10px;
     }
 
     .player-info h3 {
-        margin: 0 0 10px 0;
+        margin: 0 0 5px 0;
         color: #00ff00;
         font-size: 16px;
     }
@@ -253,7 +287,7 @@
     .hole-cards {
         display: flex;
         gap: 12px;
-        margin: 10px 0;
+        margin: 5px 0;
         justify-content: center;
     }
 
@@ -331,24 +365,7 @@
     }
 
     .game-log {
-        flex: 1;
-        background: rgba(0, 255, 0, 0.1);
-        border: 2px solid #00ff00;
-        border-radius: 8px;
-        padding: 15px;
-        min-width: 250px;
-    }
-
-    .game-log h3 {
-        margin-top: 0;
-        color: #00ff00;
-        font-size: 16px;
-    }
-
-    .log-content {
-        max-height: 400px;
-        overflow-y: auto;
-        font-size: 12px;
+        display: none;
     }
 
     .log-entry {
@@ -360,11 +377,274 @@
         border-bottom: none;
     }
 
+    /* New Modern Button Styling */
+    .ready-section {
+        background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(59, 130, 246, 0.1));
+        border: 2px solid rgba(168, 85, 247, 0.4);
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+
+    .ready-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .ready-title {
+        color: #e9d5ff;
+        font-size: 18px;
+        margin: 0;
+        text-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+    }
+
+    .ready-list {
+        width: 100%;
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .ready-list > div {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        background: rgba(168, 85, 247, 0.15);
+        border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    .ready-button-group {
+        display: none;
+    }
+
+    #cash-out-btn-ready {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #ec4899, #db2777);
+        color: #f3e8ff;
+        border: none;
+        padding: 18px 40px;
+        font-size: 18px;
+        font-weight: 700;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 10px 28px rgba(236, 72, 153, 0.18);
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        z-index: 10;
+    }
+
+    #cash-out-btn-ready:hover:not(:disabled) {
+        background: linear-gradient(135deg, #f472b6, #ec4899);
+        box-shadow: 0 15px 35px rgba(236, 72, 153, 0.3);
+        transform: translateY(-2px);
+    }
+
+    #cash-out-btn-ready:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: linear-gradient(135deg, #999, #777);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-ready {
+        background: linear-gradient(135deg, #a855f7, #7c3aed);
+        color: #f3e8ff;
+        border: none;
+        padding: 18px 40px;
+        font-size: 18px;
+        font-weight: 700;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 10px 28px rgba(168, 85, 247, 0.18);
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-ready:hover {
+        background: linear-gradient(135deg, #c084fc, #a855f7);
+        box-shadow: 0 15px 35px rgba(168, 85, 247, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .btn-ready:active {
+        transform: translateY(0);
+    }
+
+    .action-section {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.1));
+        border: 2px solid rgba(59, 130, 246, 0.3);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .action-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .action-button-group {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+
+    .action-bet-group {
+        display: grid;
+        grid-template-columns: 1.5fr 2.5fr;
+        gap: 10px;
+    }
+
+    .btn-action {
+        padding: 12px 16px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+    }
+
+    .btn-action:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-fold:disabled,
+    .btn-call:disabled,
+    .btn-raise:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-fold {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: #fff;
+    }
+
+    .btn-fold:hover:not(:disabled) {
+        background: linear-gradient(135deg, #f87171, #ef4444);
+    }
+
+    .btn-check {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: #fff;
+    }
+
+    .btn-check:hover:not(:disabled) {
+        background: linear-gradient(135deg, #4ade80, #22c55e);
+    }
+
+    .btn-check:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-call {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: #fff;
+    }
+
+    .btn-call:hover:not(:disabled) {
+        background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    }
+
+    .btn-call:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-raise {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: #fff;
+    }
+
+    .btn-raise:hover:not(:disabled) {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    }
+
+    .bet-input {
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid rgba(59, 130, 246, 0.5);
+        color: #e0f2fe;
+        padding: 10px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        transition: border-color 0.2s ease;
+    }
+
+    .bet-input::placeholder {
+        color: rgba(224, 242, 254, 0.5);
+    }
+
+    .bet-input:focus {
+        outline: none;
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+    }
+
+    .game-controls-section {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .btn-cashout {
+        background: linear-gradient(135deg, #ec4899, #db2777);
+        color: #fff;
+        border: none;
+        padding: 14px 32px;
+        font-size: 14px;
+        font-weight: 700;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 12px 28px rgba(236, 72, 153, 0.25);
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-cashout:hover {
+        background: linear-gradient(135deg, #f472b6, #ec4899);
+        box-shadow: 0 16px 35px rgba(236, 72, 153, 0.35);
+        transform: translateY(-2px);
+    }
+
+    .btn-cashout:active {
+        transform: translateY(0);
+    }
+
     /* Mobile Responsiveness */
     @media (max-width: 768px) {
         .poker-game {
             gap: 15px;
             padding: 15px;
+        }
+
+        .game-main-area {
+            flex-direction: column;
+            gap: 15px;
         }
 
         .poker-table {
@@ -375,8 +655,27 @@
 
         .game-log {
             width: 100%;
-            min-width: auto;
-            order: 3;
+            max-width: 100%;
+            height: auto;
+            max-height: 300px;
+        }
+
+        .game-bottom-section {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .action-section {
+            width: 100%;
+            flex: unset;
+        }
+
+        .action-button-group {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .action-bet-group {
+            grid-template-columns: 1fr 1fr;
         }
 
         .table-surface {
@@ -461,6 +760,56 @@
         .poker-game {
             gap: 10px;
             padding: 10px;
+            flex-direction: column;
+        }
+
+        .game-main-area {
+            flex-direction: column;
+            gap: 10px;
+            min-height: auto;
+        }
+
+        .poker-table {
+            width: 100%;
+            min-width: auto;
+        }
+
+        .game-log {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            max-height: 250px;
+        }
+
+        .game-bottom-section {
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .action-section {
+            width: 100%;
+            padding: 12px;
+        }
+
+        .action-button-group {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .action-bet-group {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .action-section .btn {
+            padding: 8px 6px;
+            font-size: 11px;
+        }
+
+        .bet-input {
+            font-size: 12px;
+            padding: 8px 6px;
         }
 
         .table-info h2 {
@@ -573,13 +922,13 @@
 </style>
 
 <script>
-    const gameId = {{ game.id }};
-    const currentPlayerId = {{ player.id|default:0 }};
+    const gameId = "{{ game.id }}";
+    const currentPlayerId = "{{ player.id|default:0 }}";
     let gameState = {};
     let updateInterval;
     let actionHistory = [];
 
-    // Convert card string to emoji format (AH -> A♠, KS -> K♥, QD -> Q♦, JC -> J♣)
+    // Convert card string to emoji format
     function cardToEmoji(card) {
         if (!card || card === 'XX') return card;
         const rank = card.substring(0, card.length - 1);
@@ -627,12 +976,36 @@
             const logEntry = document.createElement('div');
             logEntry.className = 'log-entry';
             
-            let actionText = `${action.player} ${action.action_type.toLowerCase()}`;
-            if (action.amount > 0 && (action.action_type === 'Bet' || action.action_type === 'Raise' || action.action_type === 'Call' || action.action_type === 'All In')) {
-                actionText += ` $${action.amount.toFixed(2)}`;
+            let actionText = `${action.player}`;
+            let actionColor = '#00ff00';
+            
+            // Build action description
+            if (action.action_type === 'Fold') {
+                actionText += ' folds';
+                actionColor = '#ff4444';
+            } else if (action.action_type === 'Check') {
+                actionText += ' checks';
+                actionColor = '#00ff00';
+            } else if (action.action_type === 'Call') {
+                actionText += ` calls $${action.amount.toFixed(2)}`;
+                actionColor = '#ffff00';
+            } else if (action.action_type === 'Bet') {
+                actionText += ` bets $${action.amount.toFixed(2)}`;
+                actionColor = '#ffaa00';
+            } else if (action.action_type === 'Raise') {
+                actionText += ` raises to $${action.amount.toFixed(2)}`;
+                actionColor = '#ff8844';
+            } else {
+                actionText += ` ${action.action_type.toLowerCase()} $${action.amount.toFixed(2)}`;
             }
             
-            logEntry.innerHTML = `<span style="color: #ffaa00;">${action.timestamp}</span> - <span style="color: #00ff00;">${actionText}</span>`;
+            // Add all-in indicator
+            if (action.is_all_in) {
+                actionText += ' [ALL IN]';
+                actionColor = '#ff0000';
+            }
+            
+            logEntry.innerHTML = `<span style="color: #88ccff;">${action.timestamp}</span> - <span style="color: ${actionColor};">${actionText}</span>`;
             logContent.appendChild(logEntry);
         });
         
@@ -725,6 +1098,13 @@
         const statusMsg = document.getElementById('game-status-msg');
         if (!gameState.current_hand) {
             statusMsg.textContent = 'Waiting for hand to start...';
+        } else if (gameState.stage === 'waiting') {
+            // Waiting for players to ready up
+            const currentPlayerReady = gameState.players_ready && gameState.players_ready[currentPlayerId];
+            const readyCount = gameState.players_ready ? Object.values(gameState.players_ready).filter(Boolean).length : 0;
+            const totalPlayers = gameState.players ? gameState.players.length : 0;
+            statusMsg.textContent = `Waiting for players to be ready... ${readyCount}/${totalPlayers}`;
+            statusMsg.style.color = currentPlayerReady ? '#ffff00' : '#ffaa00';
         } else if (gameState.stage === 'completed') {
             // Find winner
             const winningPlayer = gameState.players.find(p => p.is_winner);
@@ -738,20 +1118,16 @@
             statusMsg.style.color = isMyTurn ? '#ffff00' : '#00ff00';
         }
 
-        // Show action buttons if there's an active hand AND it's the current player's turn AND hand not completed
+        // Show action buttons if it's the player's turn
         const isMyTurn = gameState.current_hand && gameState.current_player_turn === currentPlayerId && gameState.stage !== 'completed';
+        console.log('Is it my turn?', isMyTurn);
+
         if (isMyTurn) {
             document.getElementById('action-buttons').style.display = 'flex';
-            
-            // Hide check button if a bet has been placed
-            const checkBtn = document.getElementById('check-btn');
-            if (gameState.current_round_bet && gameState.current_round_bet > 0) {
-                checkBtn.style.display = 'none';
-            } else {
-                checkBtn.style.display = 'block';
-            }
+            console.log('Action buttons are now visible.');
         } else {
             document.getElementById('action-buttons').style.display = 'none';
+            console.log('Action buttons are hidden.');
         }
 
         // Update community cards
@@ -823,6 +1199,19 @@
         // Show ready status and button if hand is waiting
         const readyStatusDiv = document.getElementById('ready-status');
         const readyBtn = document.getElementById('ready-btn');
+        const cashOutBtnReady = document.getElementById('cash-out-btn-ready');
+        
+        // Cash out button is always visible but disabled when hand is active
+        if (cashOutBtnReady) {
+            if (gameState.stage === 'waiting' || !gameState.current_hand_id) {
+                // Enable cash out when no hands are active or during waiting stage
+                cashOutBtnReady.disabled = false;
+            } else {
+                // Disable cash out when a hand is active
+                cashOutBtnReady.disabled = true;
+            }
+        }
+        
         if (gameState.stage === 'waiting' && gameState.players.length >= 2) {
             readyStatusDiv.style.display = 'block';
             const readyPlayersDiv = document.getElementById('ready-players');
@@ -898,7 +1287,14 @@
     });
     if (callBtn) callBtn.addEventListener('click', () => {
         console.log('Call clicked');
-        sendAction('call', 0);
+        const callAmount = (() => {
+            if (!gameState.current_hand) return 0;
+            const currentPlayerHand = gameState.players.find(p => p.id === currentPlayerId);
+            if (!currentPlayerHand) return 0;
+            return Math.max(0, gameState.current_round_bet - (currentPlayerHand.current_bet || 0));
+        })();
+        console.log('Call amount:', callAmount);
+        sendAction('call', callAmount);
     });
     if (betRaiseBtn) betRaiseBtn.addEventListener('click', () => {
         const amount = document.getElementById('bet-amount').value;
@@ -949,9 +1345,15 @@
     }
 
     // Cash out button
-    const cashOutBtn = document.getElementById('cash-out-btn');
+    const cashOutBtn = document.getElementById('cash-out-btn-ready');
     if (cashOutBtn) {
         cashOutBtn.addEventListener('click', async () => {
+            // Prevent action if button is disabled
+            if (cashOutBtn.disabled) {
+                alert('Cannot cash out while a hand is active.');
+                return;
+            }
+            
             if (confirm('Are you sure you want to cash out? You will leave the game and receive your current stack.')) {
                 try {
                     console.log('Cashing out...');

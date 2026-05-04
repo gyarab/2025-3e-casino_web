@@ -1124,6 +1124,10 @@ def player_action(request, hand_id):
         player = hand.game.players.get(user=request.user)
         player_hand = hand.player_hands.get(player=player)
         
+        # ENFORCE: Game must not be in waiting status to take actions
+        if hand.status == 'waiting':
+            return JsonResponse({'success': False, 'error': 'Game has not started yet. Both players must be ready.'})
+        
         # Check if it's this player's turn
         if hand.current_player_turn != player:
             return JsonResponse({'success': False, 'error': 'Not your turn'})
@@ -1150,6 +1154,9 @@ def player_action(request, hand_id):
             max_bet = hand.player_hands.filter(is_folded=False).aggregate(Max('current_bet'))['current_bet__max'] or Decimal('0')
             call_amount = max_bet - player_hand.current_bet
             
+            # Track original call amount for all-in refund
+            original_call_amount = call_amount
+            
             # Limit call to available stack
             call_amount = min(call_amount, player.current_stack)
             
@@ -1158,14 +1165,29 @@ def player_action(request, hand_id):
             player_hand.total_invested += call_amount
             
             # Check if going all-in
+            is_all_in = False
             if player.current_stack == 0 and player_hand.current_bet > 0:
                 player_hand.is_all_in = True
+                is_all_in = True
             
             # Add to pot
             hand.pot += call_amount
+            
+            # Handle all-in refund: if player went all-in with less than the original bet,
+            # refund the excess to the opponent
+            if is_all_in and call_amount < original_call_amount:
+                excess_refund = original_call_amount - call_amount
+                # Find the player who made the original bet
+                other_player = hand.game.players.exclude(id=player.id).first()
+                if other_player:
+                    other_player.current_stack += excess_refund
+                    other_player.save()
+                    # Reduce pot by refund amount
+                    hand.pot -= excess_refund
+            
             player.save()
             player_hand.save()
-            hand.current_round_bet = max_bet
+            hand.current_round_bet = player_hand.current_bet
         elif action_type in ['bet', 'raise']:
             if amount > player.current_stack:
                 return JsonResponse({'success': False, 'error': 'Insufficient stack'})
@@ -1187,12 +1209,22 @@ def player_action(request, hand_id):
         hand.players_acted_this_round[str(player.id)] = True
         hand.save()
         
-        # Log action
+        # Log action with comprehensive info
+        log_amount = Decimal('0')
+        if action_type == 'fold':
+            log_amount = Decimal('0')
+        elif action_type == 'check':
+            log_amount = Decimal('0')
+        elif action_type == 'call':
+            log_amount = call_amount if 'call_amount' in locals() else Decimal('0')
+        elif action_type in ['bet', 'raise']:
+            log_amount = amount
+        
         PlayerAction.objects.create(
             hand=hand,
             player=player,
             action_type=action_type,
-            amount=amount,
+            amount=log_amount,
         )
         
         # Check if only one player remains (all others folded) - hand ends immediately
@@ -1202,10 +1234,16 @@ def player_action(request, hand_id):
         ).distinct()
         
         if active_non_folded_players.count() == 1:
-            # Only one player left - they win the hand
+            # Only one player left - they win the hand and get the pot
+            winner = active_non_folded_players.first()
             hand.status = 'completed'
             hand.current_player_turn = None  # Clear turn
-            hand.winner = active_non_folded_players.first()
+            hand.winner = winner
+            
+            # Award pot to winner
+            winner.current_stack += hand.pot
+            winner.save()
+            
             hand.save()
             # Start new hand for next round
             start_new_hand_after_completion(hand.game)
@@ -1364,11 +1402,16 @@ def get_hand_actions(request, hand_id):
         
         actions_data = []
         for action in actions:
+            # Get player hand info to check all-in status
+            player_hand = hand.player_hands.filter(player=action.player).first()
+            is_all_in = player_hand.is_all_in if player_hand else False
+            
             actions_data.append({
                 'player': action.player.user.username,
                 'action_type': action.get_action_type_display(),
                 'amount': float(action.amount),
-                'timestamp': action.created_at.strftime('%H:%M:%S')
+                'timestamp': action.created_at.strftime('%H:%M:%S'),
+                'is_all_in': is_all_in
             })
         
         return JsonResponse({
