@@ -922,8 +922,8 @@
 </style>
 
 <script>
-    const gameId = "{{ game.id }}";
-    const currentPlayerId = "{{ player.id|default:0 }}";
+    const gameId = Number("{{ game.id }}");
+    const currentPlayerId = Number("{{ player.id|default:0 }}");
     let gameState = {};
     let updateInterval;
     let actionHistory = [];
@@ -1203,7 +1203,7 @@
         
         // Cash out button is always visible but disabled when hand is active
         if (cashOutBtnReady) {
-            if (gameState.stage === 'waiting' || !gameState.current_hand_id) {
+            if (gameState.stage === 'waiting' || !gameState.current_hand) {
                 // Enable cash out when no hands are active or during waiting stage
                 cashOutBtnReady.disabled = false;
             } else {
