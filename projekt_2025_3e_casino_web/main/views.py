@@ -93,10 +93,6 @@ def update_balance(request):
     return JsonResponse({'success': False}, status=400)
 
 
-def gamemodes(request):
-    return render(request, 'main/gamemodes.html')
-
-
 @login_required
 def roulette(request):
     try:

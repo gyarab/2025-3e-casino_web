@@ -15,7 +15,6 @@ urlpatterns = [
     path('roulette/', views.roulette, name='roulette'),
     path('api/spin-roulette/', views.spin_roulette, name='spin_roulette'),
     path('shop/', views.shop, name='shop'),
-    path('gamemodes/', views.gamemodes, name='gamemodes'),
     path('slots/', views.slots, name='slots'),
     path('battlepass/', views.battlepass, name='battlepass'),
     path('settings/', views.settings, name='settings'),
