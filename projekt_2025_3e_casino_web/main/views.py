@@ -34,6 +34,11 @@ def home(request):
     return render(request, 'main/home.html')
 
 
+def leaderboard(request):
+    players = UserProfile.objects.select_related('user').order_by('-balance', 'user__username')
+    return render(request, 'main/leaderboard.html', {'players': players})
+
+
 @login_required
 def settings(request):
     theme_choices = [

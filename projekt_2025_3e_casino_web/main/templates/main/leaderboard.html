@@ -1,0 +1,208 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Leaderboard - Casino Web{% endblock %}
+
+{% block extra_head %}
+<style>
+    .leaderboard-page {
+        width: min(94vw, 980px);
+        margin: 0 auto;
+        padding: 32px 0 56px;
+    }
+
+    .leaderboard-panel {
+        background: var(--game-section-bg, rgba(26, 11, 46, 0.92));
+        border: 1px solid var(--game-section-border, rgba(168, 85, 247, 0.18));
+        border-radius: 24px;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+        padding: 34px 36px;
+    }
+
+    .leaderboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 18px;
+        border-bottom: 1px solid var(--game-section-border, rgba(168, 85, 247, 0.24));
+        padding-bottom: 18px;
+        margin-bottom: 24px;
+    }
+
+    .leaderboard-title {
+        color: var(--page-title-color, #d8b4fe);
+        font-size: clamp(2rem, 6vw, 3.4rem);
+        font-weight: 900;
+        margin: 0;
+        text-shadow: var(--page-title-shadow, 0 0 30px rgba(168,85,247,0.55));
+    }
+
+    .leaderboard-subtitle {
+        color: var(--game-card-text, #e9d5ff);
+        margin: 6px 0 0;
+    }
+
+    .leaderboard-count {
+        color: var(--page-title-color, #c084fc);
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .leaderboard-list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .leaderboard-row {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 18px;
+        background: var(--game-quest-card-bg, rgba(42, 24, 74, 0.85));
+        border: 1px solid var(--game-quest-card-border, rgba(168, 85, 247, 0.14));
+        border-radius: 18px;
+        padding: 16px 20px;
+    }
+
+    .leaderboard-row.rank-gold {
+        background: linear-gradient(135deg, rgba(120, 83, 16, 0.92), rgba(42, 24, 74, 0.78));
+        border-color: rgba(250, 204, 21, 0.58);
+        box-shadow: 0 14px 34px rgba(250, 204, 21, 0.12);
+    }
+
+    .leaderboard-row.rank-silver {
+        background: linear-gradient(135deg, rgba(71, 85, 105, 0.92), rgba(42, 24, 74, 0.78));
+        border-color: rgba(203, 213, 225, 0.54);
+        box-shadow: 0 14px 34px rgba(203, 213, 225, 0.1);
+    }
+
+    .leaderboard-row.rank-bronze {
+        background: linear-gradient(135deg, rgba(120, 53, 15, 0.92), rgba(42, 24, 74, 0.78));
+        border-color: rgba(217, 119, 6, 0.58);
+        box-shadow: 0 14px 34px rgba(217, 119, 6, 0.12);
+    }
+
+    .leaderboard-rank {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--toggle-btn-bg-start, #a855f7), var(--toggle-btn-bg-end, #7c3aed));
+        color: var(--btn-text, #1a0b2e);
+        font-weight: 900;
+    }
+
+    .rank-gold .leaderboard-rank {
+        background: linear-gradient(135deg, #fef08a, #facc15 58%, #ca8a04);
+        color: #231a08;
+    }
+
+    .rank-silver .leaderboard-rank {
+        background: linear-gradient(135deg, #f8fafc, #cbd5e1 58%, #64748b);
+        color: #0f172a;
+    }
+
+    .rank-bronze .leaderboard-rank {
+        background: linear-gradient(135deg, #fed7aa, #d97706 58%, #7c2d12);
+        color: #fff7ed;
+    }
+
+    .leaderboard-player {
+        color: var(--game-card-text, #f3e8ff);
+        font-size: 1.1rem;
+        font-weight: 850;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .leaderboard-balance {
+        color: var(--page-title-color, #d8b4fe);
+        font-size: 1.05rem;
+        font-weight: 900;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .rank-gold .leaderboard-player,
+    .rank-gold .leaderboard-balance {
+        color: #fef08a;
+    }
+
+    .rank-silver .leaderboard-player,
+    .rank-silver .leaderboard-balance {
+        color: #e2e8f0;
+    }
+
+    .rank-bronze .leaderboard-player,
+    .rank-bronze .leaderboard-balance {
+        color: #fed7aa;
+    }
+
+    .leaderboard-empty {
+        color: var(--game-card-text, #e9d5ff);
+        text-align: center;
+        padding: 28px;
+    }
+
+    @media (max-width: 640px) {
+        .leaderboard-page {
+            padding-top: 18px;
+        }
+
+        .leaderboard-panel {
+            padding: 26px 18px;
+        }
+
+        .leaderboard-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .leaderboard-row {
+            grid-template-columns: 48px minmax(0, 1fr);
+            gap: 12px;
+            padding: 14px;
+        }
+
+        .leaderboard-rank {
+            width: 38px;
+            height: 38px;
+        }
+
+        .leaderboard-balance {
+            grid-column: 2;
+            text-align: left;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="leaderboard-page">
+    <section class="leaderboard-panel">
+        <div class="leaderboard-header">
+            <div>
+                <h1 class="leaderboard-title">Leaderboard</h1>
+                <p class="leaderboard-subtitle">All players ranked by current balance</p>
+            </div>
+            <div class="leaderboard-count">{{ players|length }} players</div>
+        </div>
+
+        {% if players %}
+            <div class="leaderboard-list">
+                {% for profile in players %}
+                    <div class="leaderboard-row{% if forloop.counter == 1 %} rank-gold{% elif forloop.counter == 2 %} rank-silver{% elif forloop.counter == 3 %} rank-bronze{% endif %}">
+                        <div class="leaderboard-rank">{{ forloop.counter }}</div>
+                        <div class="leaderboard-player">{{ profile.user.username }}</div>
+                        <div class="leaderboard-balance">${{ profile.balance|floatformat:2 }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="leaderboard-empty">No players yet.</div>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}
