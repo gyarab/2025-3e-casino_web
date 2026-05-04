@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.utils import timezone
@@ -696,6 +696,46 @@ def determine_winner(hand):
     except Exception as e:
         print(f"Error determining winner: {str(e)}")
 
+def start_new_hand_after_completion(game):
+    """Start a new hand after current hand completes, ready for players to get ready again"""
+    try:
+        # Create new hand in waiting status
+        deck = create_deck()
+        random.shuffle(deck)
+        
+        # Get players ordered by seat
+        active_players = list(game.players.filter(is_active=True).order_by('seat_number'))
+        
+        # For heads-up (2 players): seat 0 is small blind, seat 1 is big blind
+        small_blind_player = active_players[0] if len(active_players) > 0 else None
+        big_blind_player = active_players[1] if len(active_players) > 1 else None
+        
+        hand = PokerHand.objects.create(
+            game=game,
+            hand_number=game.current_hand_number + 1,
+            dealer=game.players.first(),
+            small_blind_player=small_blind_player,
+            big_blind_player=big_blind_player,
+            current_player_turn=None,  # No turn until cards are dealt
+            status='waiting',  # Start in waiting status
+            players_ready={},  # Reset ready status
+            deck=deck,  # Store shuffled deck
+            next_card_index=0,  # Start dealing from first card
+        )
+        
+        # Create PlayerHand objects for all players with empty hole cards
+        for player in game.players.filter(is_active=True):
+            PlayerHand.objects.create(
+                hand=hand,
+                player=player,
+                hole_cards=[],  # Empty initially
+            )
+        
+        game.current_hand_number += 1
+        game.save()
+    except Exception as e:
+        print(f"Error starting new hand: {str(e)}")
+
 @login_required
 def poker_lobby(request):
     """Show list of poker games and allow creating/joining"""
@@ -712,6 +752,8 @@ def poker_lobby(request):
 
 @login_required
 @require_http_methods(["POST"])
+@csrf_protect
+@login_required
 def create_poker_game(request):
     """Create a new poker game"""
     try:
@@ -734,11 +776,17 @@ def create_poker_game(request):
         user_profile.balance -= creator_buy_in
         user_profile.save()
         
+        # Calculate blinds (big blind = 1/10 of min_buy_in, small blind = 1/2 of big blind)
+        big_blind = min_buy_in / Decimal('10')
+        small_blind = big_blind / Decimal('2')
+        
         # Create game
         game = PokerGame.objects.create(
             created_by=request.user,
             min_buy_in=min_buy_in,
             max_buy_in=max_buy_in,
+            big_blind=big_blind,
+            small_blind=small_blind,
         )
         
         # Add creator as a player
@@ -776,6 +824,8 @@ def poker_game(request, game_id):
 @login_required
 @require_http_methods(["POST"])
 @csrf_exempt
+@csrf_protect
+@login_required
 def join_poker_game(request, game_id):
     """Join an existing poker game"""
     try:
@@ -819,58 +869,59 @@ def join_poker_game(request, game_id):
 @login_required
 @require_http_methods(["POST"])
 @csrf_exempt
+@csrf_protect
+@login_required
 def start_poker_hand(request, game_id):
-    """Start a new poker hand"""
+    """Start a new poker hand in waiting status without dealing cards yet"""
     try:
         game = PokerGame.objects.get(id=game_id)
-        
-        # Check if user is game creator
-        if game.created_by != request.user:
-            return JsonResponse({'success': False, 'error': 'Only game creator can start'})
         
         # Check if there are at least 2 players
         active_players_count = game.players.filter(is_active=True).count()
         if active_players_count < 2:
             return JsonResponse({'success': False, 'error': 'Need at least 2 players to start a hand'})
         
-        # Create new hand
+        # Check if a hand already exists
+        current_hand = game.hands.order_by('-created_at').first()
+        if current_hand and current_hand.status != 'completed':
+            return JsonResponse({'success': False, 'error': 'Hand already in progress'})
+        
+        # Create new hand in waiting status
         deck = create_deck()
         random.shuffle(deck)
         
-        # Get first player (smallest seat number)
-        first_player = game.players.filter(is_active=True).order_by('seat_number').first()
+        # Get players ordered by seat
+        active_players = list(game.players.filter(is_active=True).order_by('seat_number'))
+        
+        # For heads-up (2 players): seat 0 is small blind, seat 1 is big blind
+        small_blind_player = active_players[0] if len(active_players) > 0 else None
+        big_blind_player = active_players[1] if len(active_players) > 1 else None
         
         hand = PokerHand.objects.create(
             game=game,
             hand_number=game.current_hand_number + 1,
             dealer=game.players.first(),
-            current_player_turn=first_player,
-            status='pre-flop',
+            small_blind_player=small_blind_player,
+            big_blind_player=big_blind_player,
+            current_player_turn=None,  # No turn until cards are dealt
+            status='waiting',  # Start in waiting status, not pre-flop
+            players_ready={},  # Initialize empty ready dict
+            deck=deck,  # Store shuffled deck
+            next_card_index=0,  # Start dealing from first card
         )
         
-        # Store deck in hand for later use (we'll deal flop when advancing)
-        hand._deck = deck
-        hand._card_index = 0
+        # Create PlayerHand objects for all players with empty hole cards
+        # Cards will be dealt when all players are ready
+        for player in game.players.filter(is_active=True):
+            PlayerHand.objects.create(
+                hand=hand,
+                player=player,
+                hole_cards=[],  # Empty initially
+            )
         
         game.current_hand_number += 1
         game.status = 'active'
         game.save()
-        
-        # Deal cards to players (2 hole cards each)
-        card_index = 0
-        for player in game.players.filter(is_active=True):
-            hole_cards = [deck[card_index], deck[card_index + 1]]
-            card_index += 2
-            
-            PlayerHand.objects.create(
-                hand=hand,
-                player=player,
-                hole_cards=hole_cards,
-            )
-        
-        # Store next card index for later stages
-        hand.next_card_index = card_index
-        hand.save()
         
         return JsonResponse({'success': True, 'hand_id': hand.id})
     except PokerGame.DoesNotExist:
@@ -880,7 +931,101 @@ def start_poker_hand(request, game_id):
 
 @login_required
 @require_http_methods(["POST"])
-@csrf_exempt
+@csrf_protect
+def player_ready(request, hand_id):
+    """Toggle player ready status and deal cards + start hand when all players are ready"""
+    try:
+        hand = PokerHand.objects.get(id=hand_id)
+        game = hand.game
+        player = game.players.get(user=request.user)
+        
+        # Toggle player ready status
+        if not hand.players_ready:
+            hand.players_ready = {}
+        
+        # Toggle: if already ready, set to false; otherwise set to true
+        is_currently_ready = hand.players_ready.get(str(player.id), False)
+        hand.players_ready[str(player.id)] = not is_currently_ready
+        
+        # Check if all active players are ready
+        active_players = game.players.filter(is_active=True)
+        all_ready = all(str(p.id) in hand.players_ready and hand.players_ready[str(p.id)] for p in active_players)
+        
+        if all_ready and active_players.count() >= 2 and hand.status == 'waiting':
+            # All players ready - deal cards and start the hand
+            
+            # Deal hole cards to all players
+            card_index = hand.next_card_index
+            for player_obj in active_players.order_by('seat_number'):
+                player_hand = hand.player_hands.get(player=player_obj)
+                player_hand.hole_cards = [hand.deck[card_index], hand.deck[card_index + 1]]
+                player_hand.save()
+                card_index += 2
+            
+            hand.next_card_index = card_index
+            
+            # Post blinds
+            players_ordered = list(active_players.order_by('seat_number'))
+            
+            # Get small blind and big blind positions
+            small_blind_index = 0
+            big_blind_index = 1
+            
+            # Post small blind (dealer in heads-up)
+            small_blind_player = players_ordered[small_blind_index]
+            small_blind_amount = game.small_blind
+            small_blind_actual = min(small_blind_amount, small_blind_player.current_stack)
+            small_blind_player.current_stack -= small_blind_actual
+            small_blind_player.save()
+            
+            player_hand_sb = hand.player_hands.get(player=small_blind_player)
+            player_hand_sb.current_bet = small_blind_actual
+            player_hand_sb.total_invested = small_blind_actual
+            player_hand_sb.save()
+            
+            # Post big blind
+            big_blind_player = players_ordered[big_blind_index]
+            big_blind_amount = game.big_blind
+            big_blind_actual = min(big_blind_amount, big_blind_player.current_stack)
+            big_blind_player.current_stack -= big_blind_actual
+            big_blind_player.save()
+            
+            player_hand_bb = hand.player_hands.get(player=big_blind_player)
+            player_hand_bb.current_bet = big_blind_actual
+            player_hand_bb.total_invested = big_blind_actual
+            if big_blind_actual == big_blind_player.current_stack + big_blind_actual:
+                # They're all-in if they had to post the whole remaining stack
+                player_hand_bb.is_all_in = True
+            player_hand_bb.save()
+            
+            # Add blinds to pot
+            hand.pot = small_blind_actual + big_blind_actual
+            hand.current_round_bet = big_blind_amount  # Current bet to match is the big blind
+            
+            # Start the hand - transition to pre-flop
+            hand.status = 'pre-flop'
+            
+            # Small blind (dealer in heads-up) starts first action
+            hand.current_player_turn = small_blind_player
+            
+            # Initialize players_acted_this_round for pre-flop
+            hand.players_acted_this_round = {str(p.id): False for p in active_players}
+        
+        hand.save()
+        
+        return JsonResponse({
+            'success': True,
+            'players_ready': hand.players_ready,
+            'hand_started': hand.status != 'waiting'
+        })
+    except PokerHand.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Hand not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_protect
 def advance_stage(request, hand_id):
     """Advance to next stage (pre-flop -> flop -> turn -> river)"""
     try:
@@ -903,6 +1048,10 @@ def advance_stage(request, hand_id):
             community_cards = deck[card_index:card_index + 3]
             hand.community_cards = community_cards
             hand.status = 'flop'
+            # Post-flop: small blind acts first
+            hand.current_player_turn = hand.small_blind_player
+            hand.players_acted_this_round = {str(p.id): False for p in game.players.filter(is_active=True)}
+            hand.current_round_bet = Decimal('0')
             hand.save()
             return JsonResponse({'success': True, 'message': 'Advanced to Flop', 'stage': 'flop'})
         
@@ -917,6 +1066,10 @@ def advance_stage(request, hand_id):
             
             hand.community_cards = community_cards
             hand.status = 'turn'
+            # Post-flop: small blind acts first
+            hand.current_player_turn = hand.small_blind_player
+            hand.players_acted_this_round = {str(p.id): False for p in game.players.filter(is_active=True)}
+            hand.current_round_bet = Decimal('0')
             hand.save()
             return JsonResponse({'success': True, 'message': 'Advanced to Turn', 'stage': 'turn'})
         
@@ -931,13 +1084,20 @@ def advance_stage(request, hand_id):
             
             hand.community_cards = community_cards
             hand.status = 'river'
+            # Post-flop: small blind acts first
+            hand.current_player_turn = hand.small_blind_player
+            hand.players_acted_this_round = {str(p.id): False for p in game.players.filter(is_active=True)}
+            hand.current_round_bet = Decimal('0')
             hand.save()
             return JsonResponse({'success': True, 'message': 'Advanced to River', 'stage': 'river'})
         
         elif hand.status == 'river':
             # Hand is complete
             hand.status = 'completed'
+            hand.current_player_turn = None  # Clear turn
             hand.save()
+            # Start new hand for next round
+            start_new_hand_after_completion(hand.game)
             return JsonResponse({'success': True, 'message': 'Hand completed', 'stage': 'completed'})
         
         return JsonResponse({'success': False, 'error': 'Invalid stage'})
@@ -948,7 +1108,7 @@ def advance_stage(request, hand_id):
 
 @login_required
 @require_http_methods(["POST"])
-@csrf_exempt
+@csrf_protect
 def player_action(request, hand_id):
     """Process player action (fold, check, call, bet, raise) and auto-advance stages"""
     try:
@@ -975,14 +1135,27 @@ def player_action(request, hand_id):
             player_hand.is_folded = True
             player_hand.save()
         elif action_type == 'check':
+            # Can only check if no bet has been placed or if player has already matched the current bet
+            max_bet = hand.player_hands.filter(is_folded=False).aggregate(Max('current_bet'))['current_bet__max'] or Decimal('0')
+            if player_hand.current_bet != max_bet:
+                return JsonResponse({'success': False, 'error': 'Cannot check when a bet has been placed. Must call or fold.'})
             pass
         elif action_type == 'call':
             # Call the current bet
             max_bet = hand.player_hands.filter(is_folded=False).aggregate(Max('current_bet'))['current_bet__max'] or Decimal('0')
             call_amount = max_bet - player_hand.current_bet
+            
+            # Limit call to available stack
+            call_amount = min(call_amount, player.current_stack)
+            
             player.current_stack -= call_amount
-            player_hand.current_bet = max_bet
+            player_hand.current_bet += call_amount
             player_hand.total_invested += call_amount
+            
+            # Check if going all-in
+            if player.current_stack == 0 and player_hand.current_bet > 0:
+                player_hand.is_all_in = True
+            
             # Add to pot
             hand.pot += call_amount
             player.save()
@@ -994,6 +1167,11 @@ def player_action(request, hand_id):
             player.current_stack -= amount
             player_hand.current_bet += amount
             player_hand.total_invested += amount
+            
+            # Check if going all-in
+            if player.current_stack == 0:
+                player_hand.is_all_in = True
+            
             # Add to pot
             hand.pot += amount
             player.save()
@@ -1012,12 +1190,23 @@ def player_action(request, hand_id):
             amount=amount,
         )
         
-        # Check if round is complete (all non-folded players have acted and have equal bets)
+        # Check if only one player remains (all others folded) - hand ends immediately
         active_non_folded_players = hand.game.players.filter(is_active=True).exclude(
             playerhand__hand=hand,
             playerhand__is_folded=True
         ).distinct()
         
+        if active_non_folded_players.count() == 1:
+            # Only one player left - they win the hand
+            hand.status = 'completed'
+            hand.current_player_turn = None  # Clear turn
+            hand.winner = active_non_folded_players.first()
+            hand.save()
+            # Start new hand for next round
+            start_new_hand_after_completion(hand.game)
+            return JsonResponse({'success': True})
+        
+        # Check if round is complete (all non-folded players have acted and have equal bets)
         round_complete = True
         max_bet = Decimal('0')
         
@@ -1054,6 +1243,8 @@ def player_action(request, hand_id):
                 community_cards = deck[card_index:card_index + 3]
                 hand.community_cards = community_cards
                 hand.status = 'flop'
+                # Post-flop: small blind acts first
+                hand.current_player_turn = hand.small_blind_player
             elif hand.status == 'flop':
                 # Deal turn (1 more card = 4 total)
                 community_cards = list(hand.community_cards)
@@ -1064,6 +1255,8 @@ def player_action(request, hand_id):
                 community_cards.append(deck[card_index])
                 hand.community_cards = community_cards
                 hand.status = 'turn'
+                # Post-flop: small blind acts first
+                hand.current_player_turn = hand.small_blind_player
             elif hand.status == 'turn':
                 # Deal river (1 more card = 5 total)
                 community_cards = list(hand.community_cards)
@@ -1074,20 +1267,32 @@ def player_action(request, hand_id):
                 community_cards.append(deck[card_index])
                 hand.community_cards = community_cards
                 hand.status = 'river'
+                # Post-flop: small blind acts first
+                hand.current_player_turn = hand.small_blind_player
             elif hand.status == 'river':
                 # Hand complete - determine winner
                 hand.status = 'completed'
+                hand.current_player_turn = None  # Clear turn
                 determine_winner(hand)
+                # Start new hand for next round
+                start_new_hand_after_completion(hand.game)
         
-        # Move to next player (only if hand is not completed)
-        if hand.status != 'completed':
+        # Move to next player (only if hand is not completed and stage hasn't just advanced)
+        if hand.status != 'completed' and not round_complete:
             active_players = hand.game.players.filter(is_active=True).order_by('seat_number')
             current_index = list(active_players.values_list('id', flat=True)).index(player.id)
             next_index = (current_index + 1) % len(active_players)
             next_player = active_players[next_index]
             
+            # Skip folded players
+            attempts = 0
+            while next_player.playerhand_set.filter(hand=hand, is_folded=True).exists() and attempts < len(active_players):
+                next_index = (next_index + 1) % len(active_players)
+                next_player = active_players[next_index]
+                attempts += 1
+            
             hand.current_player_turn = next_player
-        else:
+        elif hand.status == 'completed':
             hand.current_player_turn = None
         
         hand.save()
@@ -1098,7 +1303,7 @@ def player_action(request, hand_id):
 
 @login_required
 @require_http_methods(["POST"])
-@csrf_exempt
+@csrf_protect
 def get_game_state(request, game_id):
     """Get current game state as JSON"""
     try:
@@ -1110,6 +1315,8 @@ def get_game_state(request, game_id):
             player_hand = current_hand.player_hands.filter(player=player).first() if current_hand else None
             is_current_turn = current_hand and current_hand.current_player_turn_id == player.id
             is_winner = current_hand and current_hand.winner_id == player.id
+            is_small_blind = current_hand and current_hand.small_blind_player_id == player.id
+            is_big_blind = current_hand and current_hand.big_blind_player_id == player.id
             players_data.append({
                 'id': player.id,
                 'username': player.user.username,
@@ -1119,7 +1326,10 @@ def get_game_state(request, game_id):
                 'is_current_turn': is_current_turn,
                 'is_winner': is_winner,
                 'is_folded': player_hand.is_folded if player_hand else False,
+                'current_bet': float(player_hand.current_bet) if player_hand else 0,
                 'hole_cards': player_hand.hole_cards if player_hand and (player.user == request.user or (current_hand and current_hand.status == 'completed')) else ['XX', 'XX'],
+                'is_small_blind': is_small_blind,
+                'is_big_blind': is_big_blind,
             })
         
         return JsonResponse({
@@ -1132,13 +1342,40 @@ def get_game_state(request, game_id):
             'current_hand': current_hand.id if current_hand else None,
             'current_player_turn': current_hand.current_player_turn_id if current_hand else None,
             'stage': current_hand.status if current_hand else 'pre-flop',
+            'players_ready': current_hand.players_ready if current_hand else {},
+            'current_round_bet': float(current_hand.current_round_bet) if current_hand else 0,
         })
     except PokerGame.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Game not found'})
 
 @login_required
 @require_http_methods(["POST"])
-@csrf_exempt
+@csrf_protect
+def get_hand_actions(request, hand_id):
+    """Get action history for a poker hand"""
+    try:
+        hand = PokerHand.objects.get(id=hand_id)
+        actions = hand.actions.select_related('player', 'player__user').order_by('created_at')
+        
+        actions_data = []
+        for action in actions:
+            actions_data.append({
+                'player': action.player.user.username,
+                'action_type': action.get_action_type_display(),
+                'amount': float(action.amount),
+                'timestamp': action.created_at.strftime('%H:%M:%S')
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'actions': actions_data
+        })
+    except PokerHand.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Hand not found'})
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_protect
 def leave_poker_game(request, game_id):
     """Leave a poker game and return chips to balance"""
     try:

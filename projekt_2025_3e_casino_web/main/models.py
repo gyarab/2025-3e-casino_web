@@ -91,6 +91,8 @@ class PokerGame(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_poker_games')
     min_buy_in = models.DecimalField(max_digits=10, decimal_places=2, default=10.00)
     max_buy_in = models.DecimalField(max_digits=10, decimal_places=2, default=1000.00)
+    big_blind = models.DecimalField(max_digits=10, decimal_places=2, default=1.00)
+    small_blind = models.DecimalField(max_digits=10, decimal_places=2, default=0.50)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='waiting')
     current_hand_number = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -118,19 +120,25 @@ class PokerHand(models.Model):
     game = models.ForeignKey(PokerGame, on_delete=models.CASCADE, related_name='hands')
     hand_number = models.IntegerField()
     dealer = models.ForeignKey(PokerPlayer, on_delete=models.SET_NULL, null=True, related_name='dealt_hands')
+    small_blind_player = models.ForeignKey(PokerPlayer, on_delete=models.SET_NULL, null=True, blank=True, related_name='small_blind_hands')
+    big_blind_player = models.ForeignKey(PokerPlayer, on_delete=models.SET_NULL, null=True, blank=True, related_name='big_blind_hands')
     current_player_turn = models.ForeignKey(PokerPlayer, on_delete=models.SET_NULL, null=True, blank=True, related_name='turns')
     community_cards = models.JSONField(default=list)  # ['AH', 'KS', 'QD', 'JC', 'TH'] format
     pot = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     winner = models.ForeignKey(PokerPlayer, on_delete=models.SET_NULL, null=True, blank=True, related_name='won_hands')
     status = models.CharField(max_length=20, choices=[
+        ('waiting', 'Waiting for ready'),
         ('pre-flop', 'Pre-Flop'),
         ('flop', 'Flop'),
         ('turn', 'Turn'),
         ('river', 'River'),
         ('completed', 'Completed'),
-    ], default='pre-flop')
+    ], default='waiting')
     current_round_bet = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Current bet amount in this round
     players_acted_this_round = models.JSONField(default=dict)  # {player_id: True/False}
+    players_ready = models.JSONField(default=dict)  # {player_id: True/False} - tracks ready status
+    deck = models.JSONField(default=list)  # Shuffled deck stored for dealing cards
+    next_card_index = models.IntegerField(default=0)  # Track which card to deal next
     round_number = models.IntegerField(default=0)  # Track which round of betting
     created_at = models.DateTimeField(auto_now_add=True)
     

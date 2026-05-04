@@ -44,6 +44,7 @@
                         <h3>Game #{{ game.id }}</h3>
                         <p>Created by: {{ game.created_by.username }}</p>
                         <p>Buy-In: ${{ game.min_buy_in }} - ${{ game.max_buy_in }}</p>
+                        <p>Blinds: ${{ game.small_blind }}/${{ game.big_blind }}</p>
                         <p>Players: {{ game.players.count }}/6</p>
                         <form method="POST" action="{% url 'join_poker_game' game.id %}" class="join-form">
                             {% csrf_token %}

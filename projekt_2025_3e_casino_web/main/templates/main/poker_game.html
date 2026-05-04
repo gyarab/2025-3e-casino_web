@@ -14,6 +14,7 @@
         <div class="game-status-box">
             <p><strong>Current Turn:</strong> <span id="current-turn-display">Waiting...</span></p>
             <p><strong>Stage:</strong> <span id="stage-display">Pre-Flop</span></p>
+            <p><strong>To Call:</strong> <span id="call-amount-display" style="font-size: 18px; font-weight: bold; color: #ffff00;">$0.00</span></p>
         </div>
             <!-- Community Cards -->
             <div class="community-cards" id="community-cards">
@@ -38,6 +39,13 @@
             <p id="game-status-msg" style="margin-top: 10px; color: #ffff00; font-size: 14px;"></p>
         </div>
 
+        <!-- Ready Status -->
+        <div class="ready-status" id="ready-status" style="display: none; margin-top: 15px; padding: 15px; border: 2px solid #00ff00; border-radius: 8px;">
+            <h3>Players Ready:</h3>
+            <div id="ready-players" style="margin-top: 10px;"></div>
+            <button class="btn btn-success" id="ready-btn" style="margin-top: 10px;">I'm Ready</button>
+        </div>
+
         <!-- Action Buttons -->
         <div class="action-buttons" id="action-buttons" style="display: none;">
             <button class="btn btn-danger" id="fold-btn">Fold</button>
@@ -45,16 +53,12 @@
             <button class="btn btn-primary" id="call-btn">Call</button>
             <div class="bet-input-group">
                 <input type="number" id="bet-amount" placeholder="Enter amount" step="0.01">
-                <button class="btn btn-success" id="bet-btn">Bet</button>
-                <button class="btn btn-warning" id="raise-btn">Raise</button>
+                <button class="btn btn-success" id="bet-raise-btn">Bet/Raise</button>
             </div>
         </div>
 
         <!-- Game Controls -->
         <div class="game-controls">
-            {% if game.created_by == user %}
-                <button class="btn btn-primary" id="start-hand-btn">Start Hand</button>
-            {% endif %}
             <button class="btn btn-warning" id="cash-out-btn">Cash Out</button>
         </div>
     </div>
@@ -573,6 +577,68 @@
     const currentPlayerId = {{ player.id|default:0 }};
     let gameState = {};
     let updateInterval;
+    let actionHistory = [];
+
+    // Convert card string to emoji format (AH -> A♠, KS -> K♥, QD -> Q♦, JC -> J♣)
+    function cardToEmoji(card) {
+        if (!card || card === 'XX') return card;
+        const rank = card.substring(0, card.length - 1);
+        const suit = card[card.length - 1];
+        const suitMap = {
+            'S': '♠',
+            'H': '♥',
+            'D': '♦',
+            'C': '♣'
+        };
+        return rank + (suitMap[suit] || suit);
+    }
+
+    async function getHandActions() {
+        if (!gameState.current_hand) return;
+        
+        try {
+            const response = await fetch(`/poker/hand/${gameState.current_hand}/actions/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                actionHistory = data.actions;
+                updateGameLog();
+            }
+        } catch (error) {
+            console.error('Error fetching actions:', error);
+        }
+    }
+
+    function updateGameLog() {
+        const logContent = document.getElementById('game-log-content');
+        logContent.innerHTML = '';
+        
+        if (actionHistory.length === 0) {
+            logContent.innerHTML = '<div class="log-entry" style="color: #ffaa00;">No actions yet...</div>';
+            return;
+        }
+        
+        actionHistory.forEach(action => {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            let actionText = `${action.player} ${action.action_type.toLowerCase()}`;
+            if (action.amount > 0 && (action.action_type === 'Bet' || action.action_type === 'Raise' || action.action_type === 'Call' || action.action_type === 'All In')) {
+                actionText += ` $${action.amount.toFixed(2)}`;
+            }
+            
+            logEntry.innerHTML = `<span style="color: #ffaa00;">${action.timestamp}</span> - <span style="color: #00ff00;">${actionText}</span>`;
+            logContent.appendChild(logEntry);
+        });
+        
+        // Auto-scroll to bottom
+        logContent.scrollTop = logContent.scrollHeight;
+    }
 
     async function getGameState() {
         try {
@@ -586,6 +652,27 @@
             const data = await response.json();
             if (data.success) {
                 gameState = data;
+                
+                // Auto-create a hand if one doesn't exist and there are 2 players
+                if (!gameState.current_hand && gameState.players && gameState.players.length >= 2) {
+                    try {
+                        const startResponse = await fetch(`/poker/game/${gameId}/start-hand/`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            }
+                        });
+                        const startData = await startResponse.json();
+                        if (startData.success) {
+                            // Refresh game state after creating hand
+                            await getGameState();
+                            return;
+                        }
+                    } catch (error) {
+                        console.error('Error auto-starting hand:', error);
+                    }
+                }
+                
                 updateDisplay();
             }
         } catch (error) {
@@ -597,10 +684,22 @@
         // Update pot
         document.getElementById('pot-amount').textContent = `Pot: $${gameState.pot.toFixed(2)}`;
 
+        // Calculate and update call amount
+        const getCallAmount = () => {
+            if (!gameState.current_hand) return 0;
+            const currentPlayerHand = gameState.players.find(p => p.id === currentPlayerId);
+            if (!currentPlayerHand) return 0;
+            return Math.max(0, gameState.current_round_bet - (currentPlayerHand.current_bet || 0));
+        };
+        
+        const callAmount = getCallAmount();
+        document.getElementById('call-amount-display').textContent = `$${callAmount.toFixed(2)}`;
+
         // Update stage display
         const stageDisplay = document.getElementById('stage-display');
         if (gameState.current_hand && gameState.stage) {
             const stages = {
+                'waiting': 'Waiting for Players',
                 'pre-flop': 'Pre-Flop',
                 'flop': 'Flop',
                 'turn': 'Turn',
@@ -643,6 +742,14 @@
         const isMyTurn = gameState.current_hand && gameState.current_player_turn === currentPlayerId && gameState.stage !== 'completed';
         if (isMyTurn) {
             document.getElementById('action-buttons').style.display = 'flex';
+            
+            // Hide check button if a bet has been placed
+            const checkBtn = document.getElementById('check-btn');
+            if (gameState.current_round_bet && gameState.current_round_bet > 0) {
+                checkBtn.style.display = 'none';
+            } else {
+                checkBtn.style.display = 'block';
+            }
         } else {
             document.getElementById('action-buttons').style.display = 'none';
         }
@@ -654,7 +761,7 @@
             gameState.community_cards.forEach(card => {
                 const cardEl = document.createElement('div');
                 cardEl.className = 'card';
-                cardEl.textContent = card;
+                cardEl.textContent = cardToEmoji(card);
                 cardsDisplay.appendChild(cardEl);
             });
         }
@@ -675,10 +782,21 @@
                 if (!player.is_active) status = 'Inactive';
                 if (player.is_current_turn) status = '▶ TURN';
 
+                let blindStatus = '';
+                if (gameState.stage !== 'waiting' && gameState.stage !== 'completed') {
+                    if (player.is_small_blind) blindStatus = ' 🔹 SB';
+                    if (player.is_big_blind) blindStatus = ' 🔸 BB';
+                }
+
+                let readyStatus = '';
+                if (gameState.stage === 'waiting' && gameState.players_ready && gameState.players_ready[player.id]) {
+                    readyStatus = ' ✓ Ready';
+                }
+
                 playerEl.innerHTML = `
-                    <div class="player-name">${player.username}</div>
+                    <div class="player-name">${player.username}<span style="color: #ffaa00;">${blindStatus}</span></div>
                     <div class="player-stack">$${player.stack.toFixed(2)}</div>
-                    <div class="player-status">${status}</div>
+                    <div class="player-status">${status}${readyStatus}</div>
                 `;
                 playersDisplay.appendChild(playerEl);
             });
@@ -695,20 +813,80 @@
                     currentPlayer.hole_cards.forEach(card => {
                         const cardEl = document.createElement('div');
                         cardEl.className = 'card';
-                        cardEl.textContent = card;
+                        cardEl.textContent = cardToEmoji(card);
                         holesCardsDiv.appendChild(cardEl);
                     });
                 }
             }
         }
+
+        // Show ready status and button if hand is waiting
+        const readyStatusDiv = document.getElementById('ready-status');
+        const readyBtn = document.getElementById('ready-btn');
+        if (gameState.stage === 'waiting' && gameState.players.length >= 2) {
+            readyStatusDiv.style.display = 'block';
+            const readyPlayersDiv = document.getElementById('ready-players');
+            readyPlayersDiv.innerHTML = '';
+            gameState.players.forEach(player => {
+                const isReady = gameState.players_ready && gameState.players_ready[player.id];
+                const readyEl = document.createElement('div');
+                readyEl.style.color = isReady ? '#00ff00' : '#ff6600';
+                readyEl.textContent = (isReady ? '✓ ' : '✗ ') + player.username;
+                readyPlayersDiv.appendChild(readyEl);
+            });
+            
+            // Update ready button text and state based on current player's ready status
+            if (readyBtn) {
+                const currentPlayerReady = gameState.players_ready && gameState.players_ready[currentPlayerId];
+                readyBtn.disabled = false;
+                readyBtn.textContent = currentPlayerReady ? "I'm Not Ready" : "I'm Ready";
+            }
+        } else {
+            readyStatusDiv.style.display = 'none';
+        }
+        
+        // Update game log with latest actions
+        getHandActions();
+    }
+
+    // Ready button handler
+    const readyBtn = document.getElementById('ready-btn');
+    if (readyBtn) {
+        readyBtn.addEventListener('click', async () => {
+            try {
+                if (!gameState.current_hand) {
+                    alert('No active hand yet');
+                    return;
+                }
+
+                const formData = new FormData();
+                const response = await fetch(`/poker/hand/${gameState.current_hand}/ready/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    readyBtn.disabled = true;
+                    readyBtn.textContent = "You're Ready!";
+                    await getGameState();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error marking as ready');
+            }
+        });
     }
 
     // Action handlers
     const foldBtn = document.getElementById('fold-btn');
     const checkBtn = document.getElementById('check-btn');
     const callBtn = document.getElementById('call-btn');
-    const betBtn = document.getElementById('bet-btn');
-    const raiseBtn = document.getElementById('raise-btn');
+    const betRaiseBtn = document.getElementById('bet-raise-btn');
 
     if (foldBtn) foldBtn.addEventListener('click', () => {
         console.log('Fold clicked');
@@ -722,23 +900,20 @@
         console.log('Call clicked');
         sendAction('call', 0);
     });
-    if (betBtn) betBtn.addEventListener('click', () => {
+    if (betRaiseBtn) betRaiseBtn.addEventListener('click', () => {
         const amount = document.getElementById('bet-amount').value;
-        console.log('Bet clicked with amount:', amount);
-        sendAction('bet', amount);
-    });
-    if (raiseBtn) raiseBtn.addEventListener('click', () => {
-        const amount = document.getElementById('bet-amount').value;
-        console.log('Raise clicked with amount:', amount);
-        sendAction('raise', amount);
+        // Determine if this is a bet or raise based on current_round_bet
+        const actionType = gameState.current_round_bet && gameState.current_round_bet > 0 ? 'raise' : 'bet';
+        console.log(actionType.charAt(0).toUpperCase() + actionType.slice(1) + ' clicked with amount:', amount);
+        sendAction(actionType, amount);
     });
 
     async function sendAction(actionType, amount) {
         try {
-            console.log('Sending action:', actionType, amount, 'to hand:', gameState.current_hand);
+            console.log('Sending action:', actionType, 'amount:', amount, 'to hand:', gameState.current_hand);
             
             if (!gameState.current_hand) {
-                alert('No active hand. Please wait for a hand to start.');
+                console.error('No active hand');
                 return;
             }
 
@@ -753,44 +928,24 @@
                     'X-CSRFToken': '{{ csrf_token }}'
                 }
             });
+            
+            if (!response.ok) {
+                console.error('Response not ok:', response.status, response.statusText);
+                return;
+            }
+            
             const data = await response.json();
             console.log('Action response:', data);
             
             if (data.success) {
-                getGameState();
+                console.log('Action successful, refreshing game state');
+                await getGameState();
             } else {
-                alert('Error: ' + data.error);
+                console.error('Action failed:', data.error);
             }
         } catch (error) {
-            console.error('Error:', error);
-            alert('Error: ' + error.message);
+            console.error('Error sending action:', error);
         }
-    }
-
-    const startHandBtn = document.getElementById('start-hand-btn');
-    if (startHandBtn) {
-        startHandBtn.addEventListener('click', async () => {
-            try {
-                console.log('Starting hand...');
-                const formData = new FormData();
-                const response = await fetch(`/poker/game/${gameId}/start-hand/`, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                });
-                const data = await response.json();
-                console.log('Start hand response:', data);
-                if (data.success) {
-                    getGameState();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        });
     }
 
     // Cash out button
