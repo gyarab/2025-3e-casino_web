@@ -133,18 +133,20 @@
         .quest-description { font-size: 0.95rem; color: var(--game-card-text, #e9d5ff); margin-bottom: 10px; }
         .quest-reward { font-size: 0.9rem; color: var(--page-title-color, #c084fc); font-weight: 700; }
         .quest-completed-indicator { display: inline-block; color: var(--page-title-color, #c084fc); font-size: 1.2rem; }
-        .toggle-weekly-btn {
-            background: linear-gradient(135deg, var(--toggle-btn-bg-start, #a855f7), var(--toggle-btn-bg-end, #7c3aed));
-            color: var(--toggle-btn-text, #f3e8ff);
-            border: none;
+        .quest-tabs { display: flex; gap: 10px; margin-bottom: 22px; flex-wrap: wrap; }
+        .quest-tab {
+            border: 1px solid var(--game-section-border, rgba(168, 85, 247, 0.24));
+            background: var(--game-quest-card-bg, rgba(42, 24, 74, 0.85));
+            color: var(--game-card-text, #f3e8ff);
             border-radius: 999px;
-            padding: 12px 24px;
-            font-weight: 700;
+            padding: 10px 18px;
+            font-weight: 800;
             cursor: pointer;
-            margin-top: 18px;
-            box-shadow: var(--toggle-btn-shadow, 0 10px 28px rgba(168, 85, 247, 0.18));
         }
-        .toggle-weekly-btn:hover { opacity: 0.95; }
+        .quest-tab.active {
+            background: linear-gradient(135deg, var(--toggle-btn-bg-start, #a855f7), var(--toggle-btn-bg-end, #7c3aed));
+            color: var(--btn-text, #1a0b2e);
+        }
     </style>
 {% endblock %}
 
@@ -188,13 +190,13 @@
         </div>
 
         <div class="quests-section" id="questsSection" style="display: none;">
-            <div class="quests-header">📋 Daily Quests</div>
-            <div class="daily-quests" id="dailyQuests"></div>
-            <button class="toggle-weekly-btn" onclick="toggleWeeklyQuests()">Show Weekly Quests 📅</button>
-            <div class="weekly-quests" id="weeklyQuests" style="display: none;">
-                <div class="quests-header" style="margin-top: 24px;">📅 Weekly Quests</div>
-                <div id="weeklyQuestsList"></div>
+            <div class="quests-header" id="questsHeader">Daily Quests</div>
+            <div class="quest-tabs" role="tablist" aria-label="Quests">
+                <button class="quest-tab active" id="dailyQuestTab" type="button" onclick="showQuestTab('daily')">Daily</button>
+                <button class="quest-tab" id="weeklyQuestTab" type="button" onclick="showQuestTab('weekly')">Weekly</button>
             </div>
+            <div class="daily-quests" id="dailyQuests"></div>
+            <div class="weekly-quests" id="weeklyQuests" style="display: none;"></div>
         </div>
     </div>
 {% endblock %}
@@ -229,47 +231,38 @@
                 .then(data => {
                     if (!data || data.error) return;
                     document.getElementById('questsSection').style.display = 'block';
-                    const dailyQuestsHtml = data.daily.map(quest => `
-                        <div class="quest-card ${quest.completed ? 'completed' : ''}">
-                            <div class="quest-title">
-                                ${quest.completed ? '<span class="quest-completed-indicator">✓</span>' : ''}
-                                ${quest.title}
-                            </div>
-                            <div class="quest-description">${quest.objective_type.replace(/_/g, ' ')}: ${quest.current_progress} / ${quest.objective_amount}</div>
-                            <div class="progress" style="height: 16px;">
-                                <div class="progress-bar" style="width: ${quest.progress_percent}%"></div>
-                            </div>
-                            <div class="quest-reward">Reward: +${quest.reward_xp} XP</div>
-                        </div>
-                    `).join('');
-                    document.getElementById('dailyQuests').innerHTML = dailyQuestsHtml;
-                    const weeklyQuestsHtml = data.weekly.map(quest => `
-                        <div class="quest-card ${quest.completed ? 'completed' : ''}">
-                            <div class="quest-title">
-                                ${quest.completed ? '<span class="quest-completed-indicator">✓</span>' : ''}
-                                ${quest.title}
-                            </div>
-                            <div class="quest-description">${quest.objective_type.replace(/_/g, ' ')}: ${quest.current_progress} / ${quest.objective_amount}</div>
-                            <div class="progress" style="height: 16px;">
-                                <div class="progress-bar" style="width: ${quest.progress_percent}%"></div>
-                            </div>
-                            <div class="quest-reward">Reward: +${quest.reward_xp} XP</div>
-                        </div>
-                    `).join('');
-                    document.getElementById('weeklyQuestsList').innerHTML = weeklyQuestsHtml;
+                    document.getElementById('dailyQuests').innerHTML = renderQuests(data.daily);
+                    document.getElementById('weeklyQuests').innerHTML = renderQuests(data.weekly);
                 })
                 .catch(error => console.log('Error loading quests:', error));
         }
-        function toggleWeeklyQuests() {
-            const weeklyQuests = document.getElementById('weeklyQuests');
-            const btn = event.target;
-            if (weeklyQuests.style.display === 'none') {
-                weeklyQuests.style.display = 'block';
-                btn.textContent = 'Hide Weekly Quests 📅';
-            } else {
-                weeklyQuests.style.display = 'none';
-                btn.textContent = 'Show Weekly Quests 📅';
+        function renderQuests(quests) {
+            if (!quests.length) {
+                return '<div class="quest-card"><div class="quest-title">No quests yet</div><div class="quest-description">Run the quest seeder to create the quest pool.</div></div>';
             }
+
+            return quests.map(quest => `
+                <div class="quest-card ${quest.completed ? 'completed' : ''}">
+                    <div class="quest-title">
+                        ${quest.completed ? '<span class="quest-completed-indicator">Done</span>' : ''}
+                        ${quest.title}
+                    </div>
+                    <div class="quest-description">${quest.description}</div>
+                    <div class="quest-description">${quest.objective_type.replace(/_/g, ' ')}: ${quest.current_progress} / ${quest.objective_amount}</div>
+                    <div class="progress" style="height: 16px;">
+                        <div class="progress-bar" style="width: ${quest.progress_percent}%"></div>
+                    </div>
+                    <div class="quest-reward">Reward: ${quest.reward_text || 'XP'}</div>
+                </div>
+            `).join('');
+        }
+        function showQuestTab(tabName) {
+            const isWeekly = tabName === 'weekly';
+            document.getElementById('dailyQuests').style.display = isWeekly ? 'none' : 'block';
+            document.getElementById('weeklyQuests').style.display = isWeekly ? 'block' : 'none';
+            document.getElementById('dailyQuestTab').classList.toggle('active', !isWeekly);
+            document.getElementById('weeklyQuestTab').classList.toggle('active', isWeekly);
+            document.getElementById('questsHeader').textContent = isWeekly ? 'Weekly Quests' : 'Daily Quests';
         }
         document.addEventListener('DOMContentLoaded', function() {
             loadBattlePass();

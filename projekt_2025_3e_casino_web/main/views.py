@@ -12,6 +12,9 @@ import random
 from .models import UserProfile, BattlePass, Quest, UserQuestProgress, PokerGame, PokerPlayer, PokerHand, PlayerHand, PlayerAction
 from django.db.models import Max
 
+ACTIVE_DAILY_QUESTS = 3
+ACTIVE_WEEKLY_QUESTS = 3
+
 
 @login_required
 def blackjack(request):
@@ -357,51 +360,141 @@ def spin_roulette(request):
         return JsonResponse({'error': str(e)}, status=400)
 
 
+def get_quest_cycle_key(quest_type, current_date=None):
+    current_date = current_date or timezone.localdate()
+
+    if quest_type == 'weekly':
+        year, week, _ = current_date.isocalendar()
+        return f'{year}-W{week:02d}'
+
+    return current_date.isoformat()
+
+
+def get_active_quests(quest_type, current_date=None):
+    cycle_key = get_quest_cycle_key(quest_type, current_date)
+    quest_limit = ACTIVE_WEEKLY_QUESTS if quest_type == 'weekly' else ACTIVE_DAILY_QUESTS
+    quests = list(Quest.objects.filter(quest_type=quest_type).order_by('id'))
+
+    if len(quests) <= quest_limit:
+        return quests, cycle_key
+
+    rng = random.Random(f'{quest_type}:{cycle_key}')
+    rng.shuffle(quests)
+    return quests[:quest_limit], cycle_key
+
+
+def get_or_reset_quest_progress(user, quest, cycle_key):
+    progress, created = UserQuestProgress.objects.get_or_create(
+        user=user,
+        quest=quest,
+        defaults={
+            'current_progress': 0,
+            'completed': False,
+            'cycle_key': cycle_key,
+        }
+    )
+
+    if not created and progress.cycle_key != cycle_key:
+        progress.current_progress = 0
+        progress.completed = False
+        progress.completed_at = None
+        progress.cycle_key = cycle_key
+        progress.save()
+
+    return progress
+
+
+def serialize_quest(quest, progress=None):
+    current_progress = progress.current_progress if progress else 0
+    completed = progress.completed if progress else False
+    progress_percent = 0
+    if quest.objective_amount > 0:
+        progress_percent = min((current_progress / quest.objective_amount) * 100, 100)
+
+    rewards = []
+    if quest.reward_xp:
+        rewards.append(f'+{quest.reward_xp} XP')
+    if quest.reward_chips:
+        rewards.append(f'+{quest.reward_chips} chips')
+    if quest.reward_coins:
+        rewards.append(f'+{quest.reward_coins} coins')
+
+    return {
+        'id': quest.id,
+        'title': quest.title,
+        'description': quest.description,
+        'objective_type': quest.objective_type,
+        'objective_amount': quest.objective_amount,
+        'current_progress': min(current_progress, quest.objective_amount),
+        'completed': completed,
+        'reward_xp': quest.reward_xp,
+        'reward_chips': quest.reward_chips,
+        'reward_coins': quest.reward_coins,
+        'reward_text': ' / '.join(rewards),
+        'progress_percent': progress_percent,
+    }
+
+
+def get_quest_increment(quest, game=None, won=False, win_amount=0):
+    if quest.objective_type == 'games_played' and game in ['blackjack', 'slots', 'roulette']:
+        return 1
+    if quest.objective_type == 'blackjack_games' and game == 'blackjack':
+        return 1
+    if quest.objective_type == 'slots_games' and game == 'slots':
+        return 1
+    if quest.objective_type == 'roulette_games' and game == 'roulette':
+        return 1
+    if quest.objective_type == 'games_won' and won:
+        return 1
+    if quest.objective_type == 'blackjack_wins' and game == 'blackjack' and won:
+        return 1
+    if quest.objective_type == 'slots_wins' and game == 'slots' and won:
+        return 1
+    if quest.objective_type == 'roulette_wins' and game == 'roulette' and won:
+        return 1
+    if quest.objective_type == 'money_won' and win_amount > 0:
+        return int(win_amount)
+
+    return 0
+
+
 def track_quest_progress(request, game=None, won=False, win_amount=0):
     try:
-        for quest in Quest.objects.all():
-            progress, _ = UserQuestProgress.objects.get_or_create(
-                user=request.user,
-                quest=quest,
-                defaults={'current_progress': 0, 'completed': False}
-            )
+        active_quest_groups = [
+            get_active_quests('daily'),
+            get_active_quests('weekly'),
+        ]
 
-            if progress.completed:
-                continue
+        for quests, cycle_key in active_quest_groups:
+            for quest in quests:
+                progress = get_or_reset_quest_progress(request.user, quest, cycle_key)
 
-            increment = 0
+                if progress.completed:
+                    continue
 
-            if quest.objective_type == 'games_played' and game in ['blackjack', 'slots', 'roulette']:
-                increment = 1
-            elif quest.objective_type == 'blackjack_games' and game == 'blackjack':
-                increment = 1
-            elif quest.objective_type == 'slots_games' and game == 'slots':
-                increment = 1
-            elif quest.objective_type == 'games_won' and won:
-                increment = 1
-            elif quest.objective_type == 'blackjack_wins' and game == 'blackjack' and won:
-                increment = 1
-            elif quest.objective_type == 'slots_wins' and game == 'slots' and won:
-                increment = 1
-            elif quest.objective_type == 'money_won' and win_amount > 0:
-                increment = int(win_amount)
+                increment = get_quest_increment(quest, game, won, win_amount)
 
-            if increment <= 0:
-                continue
+                if increment <= 0:
+                    continue
 
-            progress.current_progress += increment
+                progress.current_progress += increment
 
-            if progress.current_progress >= quest.objective_amount:
-                progress.completed = True
-                progress.completed_at = timezone.now()
+                if progress.current_progress >= quest.objective_amount:
+                    progress.completed = True
+                    progress.completed_at = timezone.now()
 
-                battle_pass = request.user.battlepass
-                battle_pass.xp += quest.reward_xp
-                battle_pass.total_xp += quest.reward_xp
-                check_level_up(battle_pass)
-                battle_pass.save()
+                    battle_pass = request.user.battlepass
+                    battle_pass.xp += quest.reward_xp
+                    battle_pass.total_xp += quest.reward_xp
+                    check_level_up(battle_pass)
+                    battle_pass.save()
 
-            progress.save()
+                    if quest.reward_chips:
+                        profile = request.user.userprofile
+                        profile.balance += Decimal(quest.reward_chips)
+                        profile.save()
+
+                progress.save()
 
     except Exception as e:
         print(f'Quest tracking error: {e}')
@@ -447,68 +540,27 @@ def get_battle_pass_data(request):
 
 def get_quests_data(request):
     try:
-        if not request.user.is_authenticated:
-            return JsonResponse({'daily': [], 'weekly': []})
+        daily_quest_objs, daily_cycle_key = get_active_quests('daily')
+        weekly_quest_objs, weekly_cycle_key = get_active_quests('weekly')
 
-        daily_quest_objs = Quest.objects.filter(quest_type='daily')
-        daily_quests = []
-
-        for quest in daily_quest_objs:
-            progress = UserQuestProgress.objects.filter(
-                user=request.user,
-                quest=quest
-            ).first()
-
-            if not progress:
-                progress = UserQuestProgress.objects.create(
-                    user=request.user,
-                    quest=quest,
-                    current_progress=0,
-                    completed=False
-                )
-
-            daily_quests.append({
-                'id': quest.id,
-                'title': quest.title,
-                'objective_type': quest.objective_type,
-                'objective_amount': quest.objective_amount,
-                'current_progress': progress.current_progress,
-                'completed': progress.completed,
-                'reward_xp': quest.reward_xp,
-                'progress_percent': (progress.current_progress / quest.objective_amount) * 100 if quest.objective_amount > 0 else 0,
-            })
-
-        weekly_quest_objs = Quest.objects.filter(quest_type='weekly')
-        weekly_quests = []
-
-        for quest in weekly_quest_objs:
-            progress = UserQuestProgress.objects.filter(
-                user=request.user,
-                quest=quest
-            ).first()
-
-            if not progress:
-                progress = UserQuestProgress.objects.create(
-                    user=request.user,
-                    quest=quest,
-                    current_progress=0,
-                    completed=False
-                )
-
-            weekly_quests.append({
-                'id': quest.id,
-                'title': quest.title,
-                'objective_type': quest.objective_type,
-                'objective_amount': quest.objective_amount,
-                'current_progress': progress.current_progress,
-                'completed': progress.completed,
-                'reward_xp': quest.reward_xp,
-                'progress_percent': (progress.current_progress / quest.objective_amount) * 100 if quest.objective_amount > 0 else 0,
-            })
+        if request.user.is_authenticated:
+            daily_quests = [
+                serialize_quest(quest, get_or_reset_quest_progress(request.user, quest, daily_cycle_key))
+                for quest in daily_quest_objs
+            ]
+            weekly_quests = [
+                serialize_quest(quest, get_or_reset_quest_progress(request.user, quest, weekly_cycle_key))
+                for quest in weekly_quest_objs
+            ]
+        else:
+            daily_quests = [serialize_quest(quest) for quest in daily_quest_objs]
+            weekly_quests = [serialize_quest(quest) for quest in weekly_quest_objs]
 
         return JsonResponse({
             'daily': daily_quests,
             'weekly': weekly_quests,
+            'daily_cycle_key': daily_cycle_key,
+            'weekly_cycle_key': weekly_cycle_key,
         })
 
     except Exception:

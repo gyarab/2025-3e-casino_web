@@ -1,120 +1,94 @@
 from django.core.management.base import BaseCommand
+
 from main.models import Quest
 
 
+def quest(title, description, quest_type, objective_type, objective_amount, reward_xp, reward_chips):
+    return {
+        'title': title,
+        'description': description,
+        'quest_type': quest_type,
+        'objective_type': objective_type,
+        'objective_amount': objective_amount,
+        'reward_xp': reward_xp,
+        'reward_chips': reward_chips,
+    }
+
+
+DAILY_QUESTS = [
+    quest('Casino Warmup', 'Play any casino game 2 times', 'daily', 'games_played', 2, 25, 50),
+    quest('Table Hopper', 'Play any casino game 4 times', 'daily', 'games_played', 4, 45, 100),
+    quest('Daily Grinder', 'Play any casino game 6 times', 'daily', 'games_played', 6, 65, 150),
+    quest('Lucky Session', 'Play any casino game 8 times', 'daily', 'games_played', 8, 85, 250),
+    quest('Win Any 2 Games', 'Win 2 games in any mode', 'daily', 'games_won', 2, 65, 150),
+    quest('Win Any 3 Games', 'Win 3 games in any mode', 'daily', 'games_won', 3, 85, 250),
+    quest('Win Any 5 Games', 'Win 5 games in any mode', 'daily', 'games_won', 5, 115, 400),
+    quest('Chip Spark', 'Win a total of 75 chips today', 'daily', 'money_won', 75, 55, 150),
+    quest('Chip Stack', 'Win a total of 150 chips today', 'daily', 'money_won', 150, 80, 300),
+    quest('Pocket Profit', 'Win a total of 250 chips today', 'daily', 'money_won', 250, 110, 500),
+    quest('Blackjack Check-In', 'Play Blackjack 2 times', 'daily', 'blackjack_games', 2, 35, 75),
+    quest('Play BJ 5 Times', 'Play Blackjack 5 times', 'daily', 'blackjack_games', 5, 75, 180),
+    quest('Blackjack Focus', 'Play Blackjack 7 times', 'daily', 'blackjack_games', 7, 95, 275),
+    quest('Blackjack Winner', 'Win 2 Blackjack games', 'daily', 'blackjack_wins', 2, 80, 250),
+    quest('Blackjack Streak', 'Win 4 Blackjack games', 'daily', 'blackjack_wins', 4, 120, 450),
+    quest('Slot Tap', 'Play the slot machine 3 times', 'daily', 'slots_games', 3, 40, 90),
+    quest('Slot Spinner', 'Play the slot machine 6 times', 'daily', 'slots_games', 6, 75, 180),
+    quest('Slot Sprint', 'Play the slot machine 9 times', 'daily', 'slots_games', 9, 105, 320),
+    quest('Slot Payday', 'Win 2 slot games', 'daily', 'slots_wins', 2, 80, 250),
+    quest('Slot Heater', 'Win 4 slot games', 'daily', 'slots_wins', 4, 125, 450),
+    quest('Roulette Tap', 'Play Roulette 3 times', 'daily', 'roulette_games', 3, 40, 90),
+    quest('Roulette Spin-Up', 'Play Roulette 5 times', 'daily', 'roulette_games', 5, 70, 175),
+    quest('Roulette Runner', 'Play Roulette 8 times', 'daily', 'roulette_games', 8, 100, 300),
+    quest('Red Or Black', 'Win 2 Roulette rounds', 'daily', 'roulette_wins', 2, 85, 250),
+    quest('Wheel Streak', 'Win 4 Roulette rounds', 'daily', 'roulette_wins', 4, 130, 475),
+]
+
+
+WEEKLY_QUESTS = [
+    quest('Weekly Warmup', 'Play any casino game 12 times this week', 'weekly', 'games_played', 12, 120, 350),
+    quest('Casino Regular', 'Play any casino game 20 times this week', 'weekly', 'games_played', 20, 160, 600),
+    quest('Big Week', 'Play any casino game 35 times this week', 'weekly', 'games_played', 35, 240, 1200),
+    quest('Marathon Session', 'Play any casino game 50 times this week', 'weekly', 'games_played', 50, 320, 1800),
+    quest('Winning Week', 'Win 8 games this week', 'weekly', 'games_won', 8, 180, 700),
+    quest('Hot Hands', 'Win 12 games this week', 'weekly', 'games_won', 12, 230, 1000),
+    quest('Casino Champion', 'Win 18 games this week', 'weekly', 'games_won', 18, 320, 1700),
+    quest('Chip Builder', 'Win a total of 500 chips this week', 'weekly', 'money_won', 500, 200, 1000),
+    quest('Chip Collector', 'Win a total of 1000 chips this week', 'weekly', 'money_won', 1000, 280, 1700),
+    quest('Chip Tycoon', 'Win a total of 2000 chips this week', 'weekly', 'money_won', 2000, 420, 3000),
+    quest('Blackjack Marathon', 'Play Blackjack 15 times this week', 'weekly', 'blackjack_games', 15, 160, 600),
+    quest('BJ Table Regular', 'Play Blackjack 25 times this week', 'weekly', 'blackjack_games', 25, 240, 1000),
+    quest('Blackjack Mainstay', 'Play Blackjack 40 times this week', 'weekly', 'blackjack_games', 40, 340, 1800),
+    quest('Blackjack Winner', 'Win 7 Blackjack games this week', 'weekly', 'blackjack_wins', 7, 210, 900),
+    quest('Blackjack Boss', 'Win 12 Blackjack games this week', 'weekly', 'blackjack_wins', 12, 330, 1800),
+    quest('Slot Regular', 'Play the slot machine 15 times this week', 'weekly', 'slots_games', 15, 150, 550),
+    quest('Slot Machine Fan', 'Play the slot machine 25 times this week', 'weekly', 'slots_games', 25, 230, 950),
+    quest('Slot Marathon', 'Play the slot machine 40 times this week', 'weekly', 'slots_games', 40, 330, 1700),
+    quest('Slot Winner', 'Win 7 slot games this week', 'weekly', 'slots_wins', 7, 210, 900),
+    quest('Slot Boss', 'Win 12 slot games this week', 'weekly', 'slots_wins', 12, 330, 1800),
+    quest('Roulette Regular', 'Play Roulette 15 times this week', 'weekly', 'roulette_games', 15, 150, 550),
+    quest('Wheel Grinder', 'Play Roulette 25 times this week', 'weekly', 'roulette_games', 25, 230, 950),
+    quest('Roulette Marathon', 'Play Roulette 40 times this week', 'weekly', 'roulette_games', 40, 330, 1700),
+    quest('Roulette Heater', 'Win 7 Roulette rounds this week', 'weekly', 'roulette_wins', 7, 220, 950),
+    quest('Wheel Master', 'Win 12 Roulette rounds this week', 'weekly', 'roulette_wins', 12, 340, 1900),
+]
+
+
 class Command(BaseCommand):
-    help = 'Seed initial quest data'
+    help = 'Seed the rotating daily and weekly quest pools'
 
     def handle(self, *args, **options):
-        # Clear existing quests
         Quest.objects.all().delete()
-        
-        # Daily quests
-        daily_quests = [
-            {
-                'title': 'Play 5 Games',
-                'description': 'Play any casino game 5 times',
-                'quest_type': 'daily',
-                'objective_type': 'games_played',
-                'objective_amount': 5,
-                'reward_xp': 50,
-                'reward_chips': 0
-            },
-            {
-                'title': 'Win $100',
-                'description': 'Win a total of $100 in a single session',
-                'quest_type': 'daily',
-                'objective_type': 'money_won',
-                'objective_amount': 100,
-                'reward_xp': 75,
-                'reward_chips': 500
-            },
-            {
-                'title': 'Play Blackjack 3x',
-                'description': 'Play Blackjack game 3 times',
-                'quest_type': 'daily',
-                'objective_type': 'blackjack_games',
-                'objective_amount': 3,
-                'reward_xp': 50,
-                'reward_chips': 0
-            },
-            {
-                'title': 'Win 3 Blackjack Games',
-                'description': 'Win 3 Blackjack games',
-                'quest_type': 'daily',
-                'objective_type': 'blackjack_wins',
-                'objective_amount': 3,
-                'reward_xp': 80,
-                'reward_chips': 250
-            },
-            {
-                'title': 'Play 5 Slot Games',
-                'description': 'Play Slot machine 5 times',
-                'quest_type': 'daily',
-                'objective_type': 'slots_games',
-                'objective_amount': 5,
-                'reward_xp': 60,
-                'reward_chips': 100
-            },
-        ]
-        
-        # Weekly quests
-        weekly_quests = [
-            {
-                'title': 'Win $500',
-                'description': 'Win a total of $500 throughout the week',
-                'quest_type': 'weekly',
-                'objective_type': 'money_won',
-                'objective_amount': 500,
-                'reward_xp': 200,
-                'reward_chips': 1000
-            },
-            {
-                'title': 'Play 20 Games',
-                'description': 'Play any casino game 20 times',
-                'quest_type': 'weekly',
-                'objective_type': 'games_played',
-                'objective_amount': 20,
-                'reward_xp': 150,
-                'reward_chips': 500
-            },
-            {
-                'title': 'Win 10 Games',
-                'description': 'Win 10 games throughout the week',
-                'quest_type': 'weekly',
-                'objective_type': 'games_won',
-                'objective_amount': 10,
-                'reward_xp': 175,
-                'reward_chips': 750
-            },
-            {
-                'title': 'Play 10 Slot Games',
-                'description': 'Play Slot machine 10 times',
-                'quest_type': 'weekly',
-                'objective_type': 'slots_games',
-                'objective_amount': 10,
-                'reward_xp': 130,
-                'reward_chips': 400
-            },
-            {
-                'title': 'Win 5 Slot Games',
-                'description': 'Win 5 Slot machine games',
-                'quest_type': 'weekly',
-                'objective_type': 'slots_wins',
-                'objective_amount': 5,
-                'reward_xp': 160,
-                'reward_chips': 600
-            },
-        ]
-        
-        # Create daily quests
-        for quest_data in daily_quests:
+
+        for quest_data in DAILY_QUESTS:
             Quest.objects.create(**quest_data)
             self.stdout.write(self.style.SUCCESS(f'Created daily quest: {quest_data["title"]}'))
-        
-        # Create weekly quests
-        for quest_data in weekly_quests:
+
+        for quest_data in WEEKLY_QUESTS:
             Quest.objects.create(**quest_data)
             self.stdout.write(self.style.SUCCESS(f'Created weekly quest: {quest_data["title"]}'))
-        
-        self.stdout.write(self.style.SUCCESS('Successfully seeded quests'))
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'Successfully seeded {len(DAILY_QUESTS)} daily quests and {len(WEEKLY_QUESTS)} weekly quests'
+            )
+        )
