@@ -82,6 +82,8 @@ def save_user_profile(sender, instance, **kwargs):
         BattlePass.objects.create(user=instance)
 
 class PokerGame(models.Model):
+    # NOTE: Parts of the poker models (game/player/hand/action) were
+    # implemented with assistance from GitHub Copilot.
     STATUS_CHOICES = [
         ('waiting', 'Waiting for players'),
         ('active', 'Game in progress'),

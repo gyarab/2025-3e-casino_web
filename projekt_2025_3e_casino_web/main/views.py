@@ -600,10 +600,12 @@ RANK_VALUES = {'A': 14, 'K': 13, 'Q': 12, 'J': 11, 'T': 10, '9': 9, '8': 8, '7':
 
 def create_deck():
     """Create a standard 52-card deck"""
+    # NOTE: Deck creation and basic poker utilities were assisted by GitHub Copilot.
     return [f'{rank}{suit}' for rank in CARD_RANKS for suit in CARD_SUITS]
 
 def evaluate_hand(hole_cards, community_cards):
     """Evaluate best 5-card poker hand from 7 cards (2 hole + 5 community)"""
+    # NOTE: Hand evaluation logic was implemented with help from GitHub Copilot.
     all_cards = hole_cards + community_cards
     
     # Generate all possible 5-card combinations from 7 cards
@@ -669,6 +671,7 @@ def rank_hand(cards):
 
 def determine_winner(hand):
     """Determine winner of a poker hand and award pot"""
+    # NOTE: Winner determination and pot-awarding logic was developed with GitHub Copilot assistance.
     try:
         # Get all non-folded players
         active_players = hand.game.players.filter(is_active=True).order_by('seat_number')
@@ -983,6 +986,7 @@ def start_poker_hand(request, game_id):
 @csrf_protect
 def player_ready(request, hand_id):
     """Toggle player ready status and deal cards + start hand when all players are ready"""
+    # NOTE: Player-ready handling and initial dealing logic was implemented with Copilot assistance.
     try:
         hand = PokerHand.objects.get(id=hand_id)
         game = hand.game
@@ -1160,6 +1164,7 @@ def advance_stage(request, hand_id):
 @csrf_protect
 def player_action(request, hand_id):
     """Process player action (fold, check, call, bet, raise) and auto-advance stages"""
+    # NOTE: Betting/action processing logic was implemented with assistance from GitHub Copilot.
     try:
         hand = PokerHand.objects.get(id=hand_id)
         action_type = request.POST.get('action_type')
